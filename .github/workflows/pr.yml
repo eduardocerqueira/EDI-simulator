@@ -1,0 +1,64 @@
+name: PR acceptance
+
+# Every pull request must pass these tests before it can be merged.
+# Make "PR gate" a required status check in the branch protection rule for main.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Typecheck · unit tests · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Validate Prisma schemas
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+        run: |
+          npx prisma validate --schema apps/distributor-api/prisma/schema.prisma
+          npx prisma validate --schema apps/order-api/prisma/schema.prisma
+      - name: Typecheck all workspaces
+        run: npm run typecheck
+      - name: Unit tests (X12 engine + every bad-data scenario)
+        run: npm test
+      - name: Build web apps
+        run: npm run build:web
+
+  e2e:
+    name: End-to-end (Docker stack + simulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Run end-to-end acceptance test
+        run: scripts/e2e.sh
+
+  gate:
+    name: PR gate
+    if: always()
+    needs: [checks, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - name: All required tests passed
+        run: |
+          echo "checks: ${{ needs.checks.result }} · e2e: ${{ needs.e2e.result }}"
+          [[ "${{ needs.checks.result }}" == success && "${{ needs.e2e.result }}" == success ]]

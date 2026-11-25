@@ -204,4 +204,16 @@ npm run dev:order-web         # :5174 (proxies /api → :4100)
 npm test && npm run typecheck
 ```
 
+## CI — PR acceptance gate
+
+[.github/workflows/pr.yml](.github/workflows/pr.yml) runs on every pull request to `main`:
+
+| Job | What it verifies |
+|---|---|
+| **Typecheck · unit tests · build** | Prisma schemas are valid, TypeScript in every workspace, X12 engine + all 29 bad-data scenarios (`npm test`), both web apps build |
+| **End-to-end** | [scripts/e2e.sh](scripts/e2e.sh) starts the whole Docker stack, sends 10 catalogs + 15 valid files + one file per error layer over FTP, then asserts the exact accepted / rejected counts, the TA1/997 codes, REST deliveries, acks, RabbitMQ notifications, product → X12 traceability, the order app inventory, customer orders with Net-30 bills, and both web apps behind nginx |
+| **PR gate** | Passes only when both jobs pass — make it the single *required status check* in the branch protection rule for `main` |
+
+Run the same gate locally: `npm run typecheck && npm test && scripts/e2e.sh` (the e2e uses its own compose project `edi-e2e`, but the same host ports, so stop the dev stack first).
+
 Learning resources: start with [docs/X12-PRIMER.md](docs/X12-PRIMER.md), then open the **X12 Inspector** in the distributor UI and paste one of the files from `simulator-output/sent/`.
