@@ -1,0 +1,397 @@
+// Harvest Hub Distribution — EDI gateway + inventory database.
+//
+// Traceability chain (every row links back to the raw X12 file):
+//   FileTransfer ─▶ Interchange (ISA/IEA) ─▶ FunctionalGroup (GS/GE) ─▶ TransactionSet (ST/SE)
+//        │               ├─ ValidationIssue (TA1 / AK9 / AK5 / AK3 / AK4 / business)
+//        │               ├─ ProcessingEvent (timeline)
+//        │               └─ Acknowledgment (TA1 / 997 sent back over FTP)
+//        └─ TransactionSet ─▶ InventoryMovement ─▶ Product
+//                          └─ ApiDelivery ─▶ ApiDeliveryAttempt (JSON pushed to the order app)
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("ADMIN")
+  createdAt    DateTime @default(now())
+}
+
+model TradingPartner {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  isaQualifier String
+  isaId        String   @unique
+  gsCode       String
+  ftpUser      String   @unique
+  specialty    String?
+  city         String?
+  state        String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  products      Product[]
+  files         FileTransfer[]
+  interchanges  Interchange[]
+  transactions  TransactionSet[]
+}
+
+model FileTransfer {
+  id           String    @id @default(cuid())
+  partnerId    String?
+  partner      TradingPartner? @relation(fields: [partnerId], references: [id])
+  direction    String    // INBOUND | OUTBOUND
+  protocol     String    @default("FTP")
+  fileName     String
+  remotePath   String
+  archivePath  String?
+  sizeBytes    Int       @default(0)
+  sha256       String?
+  status       String    // DISCOVERED | RETRYING | DOWNLOADED | PROCESSED | FAILED | SENT | PENDING
+  attempts     Int       @default(0)
+  lastError    String?
+  content      String?
+  discoveredAt DateTime  @default(now())
+  transferredAt DateTime?
+  processedAt  DateTime?
+
+  interchanges    Interchange[]
+  acknowledgments Acknowledgment[]
+  events          ProcessingEvent[]
+
+  @@index([direction, discoveredAt])
+  @@index([remotePath, status])
+}
+
+model Interchange {
+  id                 String    @id @default(cuid())
+  fileTransferId     String
+  fileTransfer       FileTransfer @relation(fields: [fileTransferId], references: [id])
+  partnerId          String?
+  partner            TradingPartner? @relation(fields: [partnerId], references: [id])
+  senderQualifier    String    @default("")
+  senderId           String    @default("")
+  receiverQualifier  String    @default("")
+  receiverId         String    @default("")
+  controlNumber      String    @default("")
+  interchangeDate    String    @default("")
+  interchangeTime    String    @default("")
+  version            String    @default("")
+  usageIndicator     String    @default("")
+  ackRequested       String    @default("")
+  elementSeparator   String    @default("")
+  componentSeparator String    @default("")
+  segmentTerminator  String    @default("")
+  isaLength          Int?
+  declaredGroupCount String?
+  trailerControlNumber String?
+  groupCount         Int       @default(0)
+  transactionCount   Int       @default(0)
+  acceptedCount      Int       @default(0)
+  segmentCount       Int       @default(0)
+  status             String    // RECEIVED | ACCEPTED | PARTIALLY_ACCEPTED | REJECTED | ERROR
+  ta1AckCode         String?
+  ta1NoteCode        String?
+  rawIsa             String?
+  rawIea             String?
+  errorCount         Int       @default(0)
+  processingMs       Int?
+  receivedAt         DateTime  @default(now())
+  processedAt        DateTime?
+
+  groups          FunctionalGroup[]
+  transactions    TransactionSet[]
+  issues          ValidationIssue[]
+  events          ProcessingEvent[]
+  acknowledgments Acknowledgment[]
+  notifications   Notification[]
+
+  @@index([senderId, controlNumber])
+  @@index([receivedAt])
+  @@index([status])
+}
+
+model FunctionalGroup {
+  id                String   @id @default(cuid())
+  interchangeId     String
+  interchange       Interchange @relation(fields: [interchangeId], references: [id], onDelete: Cascade)
+  index             Int
+  functionalId      String
+  senderCode        String
+  receiverCode      String
+  date              String
+  time              String
+  controlNumber     String
+  version           String
+  declaredTransactionCount String?
+  transactionCount  Int
+  acceptedCount     Int
+  ackCode           String   // A | P | R
+  ak9Codes          String[]
+  rawGs             String?
+  rawGe             String?
+
+  transactions TransactionSet[]
+  issues       ValidationIssue[]
+}
+
+model TransactionSet {
+  id              String    @id @default(cuid())
+  interchangeId   String
+  interchange     Interchange @relation(fields: [interchangeId], references: [id], onDelete: Cascade)
+  groupId         String
+  group           FunctionalGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  partnerId       String?
+  partner         TradingPartner? @relation(fields: [partnerId], references: [id])
+  index           Int
+  type            String
+  typeName        String?
+  controlNumber   String
+  segmentCount    Int
+  declaredSegmentCount String?
+  status          String    // RECEIVED | ENVELOPE_REJECTED | SYNTAX_REJECTED | BUSINESS_REJECTED | INGESTED | DELIVERED | DELIVERY_FAILED | ERROR
+  ackCode         String?   // 997 AK5: A | R
+  ak5Codes        String[]
+  raw             String
+  x12Json         Json?
+  normalizedJson  Json?
+  errorCount      Int       @default(0)
+  itemCount       Int       @default(0)
+  receivedAt      DateTime  @default(now())
+  validatedAt     DateTime?
+  ingestedAt      DateTime?
+  deliveredAt     DateTime?
+
+  issues     ValidationIssue[]
+  events     ProcessingEvent[]
+  deliveries ApiDelivery[]
+  movements  InventoryMovement[]
+  products   Product[]
+
+  @@index([status])
+  @@index([type])
+  @@index([receivedAt])
+}
+
+model ValidationIssue {
+  id              String   @id @default(cuid())
+  interchangeId   String
+  interchange     Interchange @relation(fields: [interchangeId], references: [id], onDelete: Cascade)
+  groupId         String?
+  group           FunctionalGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  transactionId   String?
+  transaction     TransactionSet? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  level           String   // INTERCHANGE | GROUP | TRANSACTION | SEGMENT | ELEMENT | BUSINESS
+  severity        String
+  code            String
+  x12Code         String?
+  x12CodeSource   String
+  message         String
+  segmentId       String?
+  segmentPosition Int?
+  elementPosition Int?
+  elementRef      String?
+  badValue        String?
+  loopId          String?
+  createdAt       DateTime @default(now())
+
+  @@index([code])
+  @@index([createdAt])
+}
+
+model ProcessingEvent {
+  id             String   @id @default(cuid())
+  fileTransferId String?
+  fileTransfer   FileTransfer? @relation(fields: [fileTransferId], references: [id], onDelete: Cascade)
+  interchangeId  String?
+  interchange    Interchange? @relation(fields: [interchangeId], references: [id], onDelete: Cascade)
+  transactionId  String?
+  transaction    TransactionSet? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  stage          String
+  status         String   // SUCCESS | FAILURE | INFO | RETRY
+  message        String
+  details        Json?
+  durationMs     Int?
+  createdAt      DateTime @default(now())
+
+  @@index([interchangeId])
+  @@index([transactionId])
+}
+
+model Acknowledgment {
+  id             String    @id @default(cuid())
+  interchangeId  String
+  interchange    Interchange @relation(fields: [interchangeId], references: [id], onDelete: Cascade)
+  fileTransferId String?
+  fileTransfer   FileTransfer? @relation(fields: [fileTransferId], references: [id])
+  type           String    // TA1 | 997
+  controlNumber  String
+  ackCode        String
+  fileName       String
+  remotePath     String
+  content        String
+  status         String    // PENDING | SENT | FAILED
+  attempts       Int       @default(0)
+  lastError      String?
+  createdAt      DateTime  @default(now())
+  sentAt         DateTime?
+}
+
+model ApiDelivery {
+  id             String    @id @default(cuid())
+  transactionId  String
+  transaction    TransactionSet @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  target         String    @default("ORDER_API")
+  endpoint       String
+  payload        Json
+  status         String    // PENDING | RETRYING | SUCCESS | DEAD
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(5)
+  nextAttemptAt  DateTime  @default(now())
+  lastError      String?
+  lastStatusCode Int?
+  responseBody   Json?
+  createdAt      DateTime  @default(now())
+  deliveredAt    DateTime?
+
+  attemptLog ApiDeliveryAttempt[]
+
+  @@index([status, nextAttemptAt])
+}
+
+model ApiDeliveryAttempt {
+  id         String   @id @default(cuid())
+  deliveryId String
+  delivery   ApiDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  attemptNo  Int
+  statusCode Int?
+  success    Boolean
+  error      String?
+  durationMs Int
+  createdAt  DateTime @default(now())
+}
+
+model Product {
+  id                String   @id @default(cuid())
+  partnerId         String
+  partner           TradingPartner @relation(fields: [partnerId], references: [id])
+  upc               String   @unique
+  sku               String
+  name              String
+  category          String
+  uom               String
+  pack              Int?
+  size              Float?
+  unitCost          Float
+  sellPrice         Float
+  quantityOnHand    Int      @default(0)
+  quantityReserved  Int      @default(0)
+  lastTransactionId String?
+  lastTransaction   TransactionSet? @relation(fields: [lastTransactionId], references: [id])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  movements InventoryMovement[]
+}
+
+model InventoryMovement {
+  id            String   @id @default(cuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  transactionId String?
+  transaction   TransactionSet? @relation(fields: [transactionId], references: [id])
+  orderNumber   String?
+  type          String   // CATALOG | INVENTORY_ADVICE | RECEIPT | ORDER_PLACED | ORDER_CANCELLED
+  quantityDelta Int
+  quantityAfter Int
+  unitCost      Float?
+  note          String?
+  createdAt     DateTime @default(now())
+
+  @@index([productId, createdAt])
+}
+
+model Notification {
+  id            String   @id @default(cuid())
+  type          String   // routing key
+  severity      String   // INFO | WARNING | ERROR
+  title         String
+  message       String
+  source        String   @default("rabbitmq")
+  payload       Json?
+  interchangeId String?
+  interchange   Interchange? @relation(fields: [interchangeId], references: [id], onDelete: SetNull)
+  transactionId String?
+  orderNumber   String?
+  read          Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([read, createdAt])
+}
+
+// ---- Replica of the order app (built from order.events messages) ----
+
+model Customer {
+  id         String   @id // id from the order app
+  name       String
+  email      String
+  company    String?
+  createdAt  DateTime
+  syncedAt   DateTime @default(now())
+
+  orders CustomerOrder[]
+  bills  Bill[]
+}
+
+model CustomerOrder {
+  id          String    @id // id from the order app
+  orderNumber String    @unique
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  status      String
+  subtotal    Float
+  total       Float
+  itemCount   Int
+  items       Json
+  createdAt   DateTime
+  cancelledAt DateTime?
+  syncedAt    DateTime  @default(now())
+}
+
+model Bill {
+  id         String    @id // id from the order app
+  billNumber String    @unique
+  orderId    String
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id])
+  amount     Float
+  status     String
+  issuedAt   DateTime
+  dueDate    DateTime
+  paidAt     DateTime?
+  syncedAt   DateTime  @default(now())
+}
+
+model OrderEventLog {
+  id         String   @id @default(cuid())
+  eventId    String   @unique
+  routingKey String
+  payload    Json
+  receivedAt DateTime @default(now())
+}
+
+model Sequence {
+  name  String @id
+  value Int
+}

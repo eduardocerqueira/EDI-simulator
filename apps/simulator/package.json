@@ -1,0 +1,19 @@
+{
+  "name": "@edi/simulator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "producers": "tsx src/cli.ts producers",
+    "customers": "tsx src/cli.ts customers",
+    "inspect": "tsx src/cli.ts inspect",
+    "sim": "tsx src/cli.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/*.test.ts"
+  },
+  "dependencies": {
+    "@edi/shared": "*",
+    "@edi/x12": "*",
+    "basic-ftp": "^5.0.5"
+  }
+}
