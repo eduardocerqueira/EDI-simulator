@@ -1,0 +1,34 @@
+# FTP server for the EDI simulation (vsftpd on Alpine).
+#
+# One mailbox per trading partner, created at start-up from $FTP_PRODUCERS:
+#   /srv/ftp/<partner>/to_distributor     producer → distributor (inbound X12)
+#   /srv/ftp/<partner>/from_distributor   distributor → producer (TA1 / 997)
+#   /srv/ftp/<partner>/archive            processed inbound files
+#   /srv/ftp/<partner>/error              files that failed to download
+#
+# Users:
+#   distributor  (chroot /srv/ftp)            sees every partner mailbox
+#   <partner>    (chroot /srv/ftp/<partner>)  sees only its own mailbox
+FROM docker.io/library/alpine:3.20
+
+RUN apk add --no-cache vsftpd tini \
+ && echo "/sbin/nologin" >> /etc/shells \
+ && mkdir -p /srv/ftp /var/run/vsftpd/empty
+
+COPY vsftpd.conf /etc/vsftpd/vsftpd.conf
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENV FTP_PRODUCERS="greenvalley,sunriseorch,meadowcreek,happyhen,goldenfields,blueridge,riverbend,cedarhill,prairiewind,coastalberry" \
+    FTP_DISTRIBUTOR_USER=distributor \
+    FTP_DISTRIBUTOR_PASSWORD=distributor123 \
+    FTP_PRODUCER_PASSWORD=producer123 \
+    FTP_PASV_MIN_PORT=21100 \
+    FTP_PASV_MAX_PORT=21110
+
+VOLUME ["/srv/ftp"]
+EXPOSE 21 21100-21110
+
+HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD nc -z 127.0.0.1 21 || exit 1
+
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/entrypoint.sh"]

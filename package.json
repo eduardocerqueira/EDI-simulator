@@ -1,0 +1,35 @@
+{
+  "name": "edi-simulator",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "infra:up": "docker compose up -d postgres rabbitmq ftp",
+    "dev:distributor-api": "npm run dev -w @edi/distributor-api",
+    "dev:distributor-web": "npm run dev -w @edi/distributor-web",
+    "dev:order-api": "npm run dev -w @edi/order-api",
+    "dev:order-web": "npm run dev -w @edi/order-web",
+    "sim:producers": "npm run producers -w @edi/simulator --",
+    "sim:customers": "npm run customers -w @edi/simulator --",
+    "sim:inspect": "npm run inspect -w @edi/simulator --",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build:web": "npm run build -w @edi/distributor-web && npm run build -w @edi/order-web",
+    "sim:acks": "npm run sim -w @edi/simulator -- acks",
+    "sim:scenarios": "npm run sim -w @edi/simulator -- scenarios",
+    "up": "docker compose up -d --build",
+    "down": "docker compose down",
+    "reset": "docker compose down -v"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,138 @@
+name: edi-simulator
+
+x-api-build: &api-build
+  context: .
+  dockerfile: infra/docker/Dockerfile
+  target: api
+
+services:
+  # ------------------------------------------------------------------ infra
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: edi
+      POSTGRES_PASSWORD: edi
+      POSTGRES_DB: edi
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edi"]
+      interval: 5s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: edi
+      RABBITMQ_DEFAULT_PASS: edi
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # management UI  http://localhost:15672  (edi / edi)
+    volumes: [rabbitdata:/var/lib/rabbitmq]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      retries: 20
+
+  ftp:
+    build:
+      context: ./infra/ftp
+      dockerfile: Containerfile
+    environment:
+      FTP_DISTRIBUTOR_PASSWORD: ${FTP_DISTRIBUTOR_PASSWORD:-distributor123}
+      FTP_PRODUCER_PASSWORD: ${FTP_PRODUCER_PASSWORD:-producer123}
+    ports:
+      - "${FTP_PORT:-21}:21"
+      - "21100-21110:21100-21110"
+    volumes: [ftpdata:/srv/ftp]
+
+  # ------------------------------------------------------------ web app 1
+  distributor-api:
+    build: { <<: *api-build, args: { APP: distributor-api } }
+    environment:
+      DATABASE_URL: postgresql://edi:edi@postgres:5432/distributor
+      AMQP_URL: amqp://edi:edi@rabbitmq:5672
+      FTP_HOST: ftp
+      FTP_PORT: 21
+      FTP_USER: distributor
+      FTP_PASSWORD: ${FTP_DISTRIBUTOR_PASSWORD:-distributor123}
+      FTP_POLL_INTERVAL_MS: ${FTP_POLL_INTERVAL_MS:-5000}
+      ORDER_API_URL: http://order-api:4100
+      ORDER_API_KEY: ${INTEGRATION_API_KEY:-integration-key-change-me}
+      DELIVERY_FAILURE_RATE: ${DELIVERY_FAILURE_RATE:-0.05}
+      JWT_SECRET: ${DISTRIBUTOR_JWT_SECRET:-dev-distributor-secret-change-me}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@harvesthub.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+    ports: ["4000:4000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      ftp: { condition: service_started }
+    restart: unless-stopped
+
+  distributor-web:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      target: web
+      args: { APP: distributor-web }
+    ports: ["3000:80"]
+    depends_on: [distributor-api]
+
+  # ------------------------------------------------------------ web app 2
+  order-api:
+    build: { <<: *api-build, args: { APP: order-api } }
+    environment:
+      DATABASE_URL: postgresql://edi:edi@postgres:5432/orders
+      AMQP_URL: amqp://edi:edi@rabbitmq:5672
+      INTEGRATION_API_KEY: ${INTEGRATION_API_KEY:-integration-key-change-me}
+      JWT_SECRET: ${ORDER_JWT_SECRET:-dev-order-secret-change-me}
+      PAYMENT_TERMS_DAYS: 30
+    ports: ["4100:4100"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    restart: unless-stopped
+
+  order-web:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      target: web
+      args: { APP: order-web }
+    ports: ["3001:80"]
+    depends_on: [order-api]
+
+  # ------------------------------------------------------------ tools (opt-in)
+  # docker compose run --rm simulator producers --bootstrap -n 30
+  # docker compose run --rm simulator customers -o 20
+  simulator:
+    profiles: [tools]
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      target: simulator
+    environment:
+      FTP_HOST: ftp
+      FTP_PORT: 21
+      FTP_PRODUCER_PASSWORD: ${FTP_PRODUCER_PASSWORD:-producer123}
+      ORDER_API_URL: http://order-api:4100
+    volumes: [simdata:/data]
+    depends_on: [ftp]
+
+  # docker compose --profile observability up -d   → http://localhost:9090
+  prometheus:
+    profiles: [observability]
+    image: prom/prometheus:v2.53.0
+    volumes: ["./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    ports: ["9090:9090"]
+    depends_on: [distributor-api]
+
+volumes:
+  pgdata:
+  rabbitdata:
+  ftpdata:
+  simdata:

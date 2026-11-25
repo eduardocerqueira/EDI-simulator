@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/.vite
+apps/*/src/generated
+simulator-output
+.git
+.env
+**/.env
+*.log

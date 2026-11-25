@@ -1,0 +1,23 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import '@edi/ui/theme.css';
+@source '../../../packages/ui/src';
+
+/* Harvest Market brand: warm orange primary */
+:root {
+  --primary: oklch(0.64 0.18 45);
+  --primary-foreground: oklch(0.99 0.01 60);
+  --ring: oklch(0.64 0.18 45);
+  --accent: oklch(0.96 0.03 60);
+  --accent-foreground: oklch(0.3 0.08 45);
+  --chart-1: oklch(0.64 0.18 45);
+  --sidebar-primary: oklch(0.64 0.18 45);
+}
+.dark {
+  --primary: oklch(0.72 0.17 50);
+  --primary-foreground: oklch(0.18 0.03 50);
+  --ring: oklch(0.72 0.17 50);
+  --accent: oklch(0.3 0.04 50);
+  --chart-1: oklch(0.72 0.17 50);
+  --sidebar-primary: oklch(0.72 0.17 50);
+}
