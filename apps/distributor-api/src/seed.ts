@@ -13,7 +13,8 @@ export async function seed() {
   });
   for (const p of PRODUCERS) {
     const data = { code: p.code, name: p.name, isaQualifier: p.isaQualifier, isaId: p.isaId, gsCode: p.gsCode, ftpUser: p.ftpUser, specialty: p.specialty, city: p.city, state: p.state };
-    await prisma.tradingPartner.upsert({ where: { isaId: p.isaId }, create: data, update: data });
+    // keyed by the stable partner code, so renamed partners (new ISA ID / FTP user) are updated in place
+    await prisma.tradingPartner.upsert({ where: { code: p.code }, create: data, update: data });
   }
   log.info(`[seed] admin ${config.admin.email} and ${PRODUCERS.length} trading partners ready`);
 }
