@@ -48,6 +48,8 @@ export interface ClusterEvent {
 
 const LABEL_ROLE = 'edi.platform.role=ftp-node';
 const nodes = new Map<number, NodeState>();
+/** Event history kept in memory (newest first); /api/events pages and filters it. */
+export const MAX_EVENTS = 1000;
 const events: ClusterEvent[] = [];
 const busy = new Set<number>();
 const chaosAt = new Map<number, number>();
@@ -59,7 +61,7 @@ const nodeName = (slot: number) => `ftp-node-${slot}`;
 export function recordEvent(e: Omit<ClusterEvent, 'id' | 'at'>, publish?: { routingKey: string; title: string; extra?: Partial<PlatformEvent> }) {
   const event: ClusterEvent = { id: randomUUID(), at: new Date().toISOString(), ...e };
   events.unshift(event);
-  if (events.length > 300) events.length = 300;
+  if (events.length > MAX_EVENTS) events.length = MAX_EVENTS;
   console.log(`${event.at} [${e.type}] ${e.node ?? ''} ${e.message}`);
   if (publish) {
     const msg: PlatformEvent = {
@@ -355,5 +357,38 @@ export function clusterState() {
     lastReconcileAt,
     nodes: list,
     events: events.slice(0, 100),
+  };
+}
+
+export interface EventQuery {
+  node?: string;
+  type?: string;
+  severity?: string;
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/** Filtered, paginated view of the event history (newest first). */
+export function queryEvents(f: EventQuery) {
+  const page = Math.max(1, Number(f.page) || 1);
+  const pageSize = Math.min(200, Math.max(1, Number(f.pageSize) || 20));
+  const needle = f.q?.trim().toLowerCase();
+  const matches = events.filter(
+    (e) =>
+      (!f.node || e.node === f.node) &&
+      (!f.type || e.type === f.type) &&
+      (!f.severity || e.severity === f.severity) &&
+      (!needle || e.message.toLowerCase().includes(needle) || (e.node ?? '').toLowerCase().includes(needle) || e.type.toLowerCase().includes(needle)),
+  );
+  return {
+    items: matches.slice((page - 1) * pageSize, page * pageSize),
+    total: matches.length,
+    page,
+    pageSize,
+    retained: events.length,
+    maxRetained: MAX_EVENTS,
+    oldest: events.at(-1)?.at,
+    nodes: [...new Set(events.map((e) => e.node).filter((n): n is string => !!n))].sort(),
   };
 }

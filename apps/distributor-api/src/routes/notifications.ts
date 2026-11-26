@@ -10,6 +10,10 @@ export async function notificationRoutes(app: FastifyInstance) {
     const where: Prisma.NotificationWhereInput = {
       ...(f.unread === 'true' ? { read: false } : {}),
       ...(f.severity ? { severity: f.severity } : {}),
+      ...(f.node ? { payload: { path: ['node'], equals: f.node } } : {}),
+      ...(f.q?.trim()
+        ? { OR: [{ title: { contains: f.q.trim(), mode: 'insensitive' as const } }, { message: { contains: f.q.trim(), mode: 'insensitive' as const } }] }
+        : {}),
       ...(f.category === 'edi'
         ? { type: { startsWith: 'edi.' } }
         : f.category === 'platform'
@@ -18,6 +22,8 @@ export async function notificationRoutes(app: FastifyInstance) {
             ? { AND: [{ NOT: { type: { startsWith: 'edi.' } } }, { NOT: { type: { startsWith: 'platform.' } } }] }
             : {}),
     };
+    // exact routing key, combined with (not replacing) the category's prefix filter
+    if (f.type) where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), { type: f.type }];
     const [items, total, unread] = await Promise.all([
       prisma.notification.findMany({ where, skip, take, orderBy: { createdAt: 'desc' } }),
       prisma.notification.count({ where }),
