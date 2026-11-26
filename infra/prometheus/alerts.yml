@@ -1,0 +1,54 @@
+# Alert rules for the FTP cluster. Firing / resolved alerts are turned into
+# platform notifications by the platform controller (RabbitMQ platform.events).
+groups:
+  - name: ftp-cluster
+    interval: 5s
+    rules:
+      - alert: FtpNodeDown
+        expr: ftp_node_up == 0
+        for: 0s
+        labels: { severity: critical }
+        annotations:
+          summary: 'FTP node {{ $labels.node }} is not answering its FTP greeting'
+
+      - alert: FtpClusterDegraded
+        expr: ftp_cluster_ready_nodes < ftp_cluster_desired_nodes
+        for: 0s
+        labels: { severity: warning }
+        annotations:
+          summary: 'FTP cluster degraded: {{ $value }} node(s) ready'
+
+      - alert: FtpClusterUnavailable
+        expr: ftp_cluster_ready_nodes == 0
+        for: 5s
+        labels: { severity: critical }
+        annotations:
+          summary: 'No FTP node is available — producers cannot deliver files'
+
+      - alert: FtpLoadBalancerBackendDown
+        expr: haproxy_server_status{proxy="ftp_control", state="UP"} == 0
+        for: 0s
+        labels: { severity: warning }
+        annotations:
+          summary: 'Load balancer marked {{ $labels.server }} DOWN'
+
+      - alert: FtpInboxBacklog
+        expr: sum by (partner) (ftp_storage_files{folder="fresh"}) > 25
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: '{{ $labels.partner }} has {{ $value }} files waiting in to_distributor'
+
+      - alert: FtpStorageAlmostFull
+        expr: 1 - ftp_volume_free_bytes / ftp_volume_size_bytes > 0.85
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Shared FTP storage volume is {{ $value | humanizePercentage }} full'
+
+      - alert: PlatformControllerDown
+        expr: up{job="platform-controller"} == 0
+        for: 15s
+        labels: { severity: critical }
+        annotations:
+          summary: 'Platform controller is down — the FTP cluster will not self-heal'

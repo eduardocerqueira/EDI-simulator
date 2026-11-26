@@ -237,7 +237,7 @@ async function infra(page: Page) {
   await caption(page, '<b>EDI Simulator</b> · Infrastructure', 'Producers ⇄ FTP ⇄ Distributor ⇄ REST ⇄ Order app, with RabbitMQ events — all local with Docker Compose');
   await sleep(3500);
 
-  await caption(page, 'Seven containers: Postgres, RabbitMQ, an FTP server and two apps (API + web each)', 'started with <b>docker compose up -d --build</b>');
+  await caption(page, 'Postgres, RabbitMQ, an HA FTP cluster (load balancer + 3 nodes + self-healing controller), Prometheus and two apps', 'started with <b>docker compose up -d --build</b>');
   await run(page, `docker compose ps --format 'table {{.Service}}\\t{{.Image}}\\t{{.Status}}'`, { pauseAfter: 3500 });
 
   await caption(page, 'The FTP server is built from <b>infra/ftp/Containerfile</b> (vsftpd)', 'the distributor login sees one mailbox per trading partner');

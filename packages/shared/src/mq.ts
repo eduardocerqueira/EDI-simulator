@@ -8,7 +8,8 @@ import { EXCHANGES, QUEUES } from './contracts.js';
  *
  *   edi.events   (topic) ──"edi.*.rejected | edi.*.failed"──▶ distributor.notifications
  *   order.events (topic) ──"#"──────────────────────────────▶ distributor.order-events
- *   both                 ──"#"──────────────────────────────▶ audit.all  (TTL 1h, max 5000)
+ *   platform.events (topic) ──"platform.#"──────────────────▶ distributor.platform
+ *   all                  ──"#"──────────────────────────────▶ audit.all  (TTL 1h, max 5000)
  *   dlx          (fanout) ─────────────────────────────────▶ dead-letter
  */
 export interface Consumer {
@@ -121,6 +122,7 @@ export class MessageBus {
 export async function declareTopology(ch: Channel): Promise<void> {
   await ch.assertExchange(EXCHANGES.edi, 'topic', { durable: true });
   await ch.assertExchange(EXCHANGES.orders, 'topic', { durable: true });
+  await ch.assertExchange(EXCHANGES.platform, 'topic', { durable: true });
   await ch.assertExchange(EXCHANGES.deadLetter, 'fanout', { durable: true });
   await ch.assertQueue(QUEUES.deadLetter, { durable: true });
   await ch.bindQueue(QUEUES.deadLetter, EXCHANGES.deadLetter, '');
@@ -133,7 +135,11 @@ export async function declareTopology(ch: Channel): Promise<void> {
   await ch.assertQueue(QUEUES.distributorOrderEvents, dl);
   await ch.bindQueue(QUEUES.distributorOrderEvents, EXCHANGES.orders, '#');
 
+  await ch.assertQueue(QUEUES.distributorPlatform, dl);
+  await ch.bindQueue(QUEUES.distributorPlatform, EXCHANGES.platform, 'platform.#');
+
   await ch.assertQueue(QUEUES.audit, { durable: true, arguments: { 'x-message-ttl': 3_600_000, 'x-max-length': 5000 } });
   await ch.bindQueue(QUEUES.audit, EXCHANGES.edi, '#');
   await ch.bindQueue(QUEUES.audit, EXCHANGES.orders, '#');
+  await ch.bindQueue(QUEUES.audit, EXCHANGES.platform, '#');
 }

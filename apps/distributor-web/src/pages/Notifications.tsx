@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertOctagon, AlertTriangle, BellOff, CheckCheck, Info, Rabbit } from 'lucide-react';
+import { AlertOctagon, AlertTriangle, BellOff, CheckCheck, Info, Rabbit, Server } from 'lucide-react';
 import { Badge } from '@edi/ui/components/badge';
 import { Button } from '@edi/ui/components/button';
 import { Card } from '@edi/ui/components/card';
@@ -35,7 +35,7 @@ const SEV = {
 export function NotificationsPage() {
   const qc = useQueryClient();
   const { values: f, page, set } = useUrlFilters({ tab: 'all', severity: '' });
-  const params = { unread: f.tab === 'unread' ? 'true' : undefined, category: f.tab === 'edi' || f.tab === 'orders' ? f.tab : undefined, severity: f.severity, page, pageSize: 20 };
+  const params = { unread: f.tab === 'unread' ? 'true' : undefined, category: f.tab === 'edi' || f.tab === 'orders' || f.tab === 'platform' ? f.tab : undefined, severity: f.severity, page, pageSize: 20 };
   const q = useQuery({
     queryKey: ['notifications', params],
     queryFn: () => api<Page<Notification> & { unread: number }>(`/notifications${qs(params)}`),
@@ -57,7 +57,7 @@ export function NotificationsPage() {
         title="Notifications"
         description={
           <>
-            Event-driven alerts. EDI failures are published to the <code className="font-mono">edi.events</code> exchange and routed by RabbitMQ (<code className="font-mono">edi.*.rejected</code>, <code className="font-mono">edi.*.failed</code>) to the <code className="font-mono">distributor.notifications</code> queue; order events arrive from the order app on <code className="font-mono">order.events</code>.
+            Event-driven alerts. EDI failures are published to the <code className="font-mono">edi.events</code> exchange and routed by RabbitMQ (<code className="font-mono">edi.*.rejected</code>, <code className="font-mono">edi.*.failed</code>) to the <code className="font-mono">distributor.notifications</code> queue; order events arrive from the order app on <code className="font-mono">order.events</code>; FTP cluster events (node down / replaced / recovered, Prometheus alerts) arrive from the platform controller on <code className="font-mono">platform.events</code>.
           </>
         }
         actions={
@@ -76,6 +76,7 @@ export function NotificationsPage() {
             <TabsTrigger value="unread">Unread {q.data?.unread ? <Badge variant="destructive" className="ml-1">{q.data.unread}</Badge> : null}</TabsTrigger>
             <TabsTrigger value="edi">EDI</TabsTrigger>
             <TabsTrigger value="orders">Orders & billing</TabsTrigger>
+            <TabsTrigger value="platform">Platform</TabsTrigger>
           </TabsList>
         </Tabs>
         <NativeSelect value={f.severity} onChange={(v) => set({ severity: v })} placeholder="Any severity" options={['ERROR', 'WARNING', 'INFO'].map((s) => ({ value: s, label: s.toLowerCase() }))} />
@@ -91,8 +92,9 @@ export function NotificationsPage() {
           <ul>
             {q.data!.items.map((n) => {
               const s = SEV[n.severity as keyof typeof SEV] ?? SEV.INFO;
-              const Icon = s.icon;
-              const link = n.transactionId ? `/edi/transactions/${n.transactionId}` : n.interchangeId ? `/edi/interchanges/${n.interchangeId}` : n.orderNumber ? `/orders?q=${n.orderNumber}` : null;
+              const isPlatform = n.type.startsWith('platform.');
+              const Icon = isPlatform ? Server : s.icon;
+              const link = isPlatform ? '/platform' : n.transactionId ? `/edi/transactions/${n.transactionId}` : n.interchangeId ? `/edi/interchanges/${n.interchangeId}` : n.orderNumber ? `/orders?q=${n.orderNumber}` : null;
               const errors: Array<{ code: string; x12Code?: string; message: string }> = n.payload?.errors ?? [];
               return (
                 <li key={n.id} className={cn('flex gap-4 border-b px-4 py-4 last:border-0', !n.read && 'bg-primary/[0.03]')}>
@@ -127,6 +129,7 @@ export function NotificationsPage() {
                       {!n.read && (
                         <Button size="sm" variant="ghost" onClick={() => markRead.mutate(n.id)}>Mark read</Button>
                       )}
+                      {isPlatform && n.payload?.node && <span className="text-muted-foreground flex items-center gap-1 font-mono text-xs"><Server className="size-3" /> {n.payload.node}</span>}
                       {n.payload?.partner && <span className="text-muted-foreground flex items-center gap-1 text-xs"><Rabbit className="size-3" /> {n.payload.partner}</span>}
                     </div>
                   </div>

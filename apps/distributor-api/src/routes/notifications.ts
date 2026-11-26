@@ -10,7 +10,13 @@ export async function notificationRoutes(app: FastifyInstance) {
     const where: Prisma.NotificationWhereInput = {
       ...(f.unread === 'true' ? { read: false } : {}),
       ...(f.severity ? { severity: f.severity } : {}),
-      ...(f.category === 'edi' ? { type: { startsWith: 'edi.' } } : f.category === 'orders' ? { NOT: { type: { startsWith: 'edi.' } } } : {}),
+      ...(f.category === 'edi'
+        ? { type: { startsWith: 'edi.' } }
+        : f.category === 'platform'
+          ? { type: { startsWith: 'platform.' } }
+          : f.category === 'orders'
+            ? { AND: [{ NOT: { type: { startsWith: 'edi.' } } }, { NOT: { type: { startsWith: 'platform.' } } }] }
+            : {}),
     };
     const [items, total, unread] = await Promise.all([
       prisma.notification.findMany({ where, skip, take, orderBy: { createdAt: 'desc' } }),

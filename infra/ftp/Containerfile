@@ -1,4 +1,9 @@
-# FTP server for the EDI simulation (vsftpd on Alpine).
+# FTP node for the EDI simulation (vsftpd on Alpine).
+#
+# Runs as a CLUSTER: several nodes (ftp-node-1..3) behind the HAProxy load
+# balancer (service "ftp"), all mounting the same storage volume at /srv/ftp.
+# Each node owns a distinct passive port range so the load balancer can route
+# FTP data connections back to the node that holds the control connection.
 #
 # One mailbox per trading partner, created at start-up from $FTP_PRODUCERS:
 #   /srv/ftp/<partner>/to_distributor     producer → distributor (inbound X12)
