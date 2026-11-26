@@ -1,0 +1,14 @@
+{
+  "name": "edi-demo-recorder",
+  "private": true,
+  "type": "module",
+  "description": "Records the demo videos in docs/demo with Playwright (not part of the npm workspaces).",
+  "scripts": {
+    "install-browser": "playwright install chromium",
+    "record": "tsx record.ts"
+  },
+  "devDependencies": {
+    "playwright": "1.54.2",
+    "tsx": "^4.20.0"
+  }
+}

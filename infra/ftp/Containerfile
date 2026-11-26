@@ -19,7 +19,7 @@ COPY vsftpd.conf /etc/vsftpd/vsftpd.conf
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-ENV FTP_PRODUCERS="greenvalley,sunriseorch,meadowcreek,happyhen,goldenfields,blueridge,riverbend,cedarhill,prairiewind,coastalberry" \
+ENV FTP_PRODUCERS="zephyrwood,quillberry,mossvale,pebblewing,thistlewick,glimmerhive,ironfern,wispmeadow,lanternfield,driftcove" \
     FTP_DISTRIBUTOR_USER=distributor \
     FTP_DISTRIBUTOR_PASSWORD=distributor123 \
     FTP_PRODUCER_PASSWORD=producer123 \

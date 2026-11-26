@@ -1,20 +1,20 @@
 # Reading an ANSI X12 envelope — a primer using this project's files
 
-This primer walks through one real file produced by `npm run sim:producers`: an **846 Inventory Inquiry/Advice** from Green Valley Farms to Harvest Hub. Keep `npm run sim:inspect -- <file>` or the distributor's **X12 Inspector** open next to it. Both print every element's name and code meaning.
+This primer walks through one real file produced by `npm run sim:producers`: an **846 Inventory Inquiry/Advice** from Zephyrwood Greens to Harvest Hub. Keep `npm run sim:inspect -- <file>` or the distributor's **X12 Inspector** open next to it. Both print every element's name and code meaning.
 
 ```
-ISA*00*          *00*          *ZZ*GREENVALLEY    *ZZ*HARVESTHUB     *261125*1432*U*00401*000001042*1*T*>~
-GS*IB*GREENVALLEY*HARVESTHUB*20261125*1432*1042*X*004010~
+ISA*00*          *00*          *ZZ*ZEPHYRWOOD     *ZZ*HARVESTHUB     *261125*1432*U*00401*000001042*1*T*>~
+GS*IB*ZEPHYRWOOD*HARVESTHUB*20261125*1432*1042*X*004010~
 ST*846*0001~
 BIA*00*DD*INV2611254821*20261125*1432~
 DTM*007*20261125~
-N1*SU*GREEN VALLEY FARMS*92*PRD001~
-N3*1200 VALLEY RD~
-N4*SALINAS*CA*93901~
-LIN**UP*081007000101*VN*GVF-001~
+N1*SU*ZEPHYRWOOD GREENS*92*PRD001~
+N3*100 EXAMPLE ROAD~
+N4*FERNHOLLOW*CA*00011~
+LIN**UP*081007000101*VN*ZWG-001~
 PID*F*08***ORGANIC ROMAINE LETTUCE~
 QTY*33*240*CA~
-LIN**UP*081007000132*VN*GVF-002~
+LIN**UP*081007000132*VN*ZWG-002~
 PID*F*08***RAINBOW CARROTS~
 QTY*33*85*LB~
 CTT*2~
@@ -58,7 +58,7 @@ Each header has a trailer that **echoes its control number and counts what it co
 | Element | Value | Meaning |
 |---|---|---|
 | ISA01 / ISA03 | `00` / `00` | no authorization / security information |
-| ISA05 / ISA06 | `ZZ` / `GREENVALLEY` | sender qualifier (ZZ = mutually defined) and **sender ID** |
+| ISA05 / ISA06 | `ZZ` / `ZEPHYRWOOD` | sender qualifier (ZZ = mutually defined) and **sender ID** |
 | ISA07 / ISA08 | `ZZ` / `HARVESTHUB` | receiver qualifier and **receiver ID** |
 | ISA09 / ISA10 | `261125` / `1432` | date YYMMDD / time HHMM |
 | ISA11 | `U` | U.S. EDI community of ASC X12 |
@@ -79,7 +79,7 @@ Each header has a trailer that **echoes its control number and counts what it co
 - **Qualifiers** give meaning to the next value:
   - `DTM*007*20261125`: 007 = *Effective* date (011 = shipped, 018 = available).
   - `N1*SU*…`: SU = *Supplier* (ST = ship-to, SF = ship-from).
-  - `LIN**UP*081007000101*VN*GVF-001`: UP = the UPC follows, VN = the vendor's item number follows.
+  - `LIN**UP*081007000101*VN*ZWG-001`: UP = the UPC follows, VN = the vendor's item number follows.
   - `QTY*33*240*CA`: 33 = *quantity available for sale*, in CA (cases).
 - **Loops** are groups of segments that repeat together. The **N1 loop** (N1 party, N3 street, N4 city/state/zip) describes one party. The **LIN loop** (LIN, PID, QTY) describes one item. In the 856, the **HL loop** builds a tree: `HL*1**S` (shipment) ← `HL*2*1*O` (order, parent 1) ← `HL*3*2*I` (item, parent 2).
 - **Control totals**: `CTT*2` says there are 2 LIN items. A mismatch is caught as `CTT_COUNT_MISMATCH`.
@@ -120,7 +120,7 @@ The distributor keeps two JSON views of every transaction set. You can see both 
 {
   "type": { "name": "846_INVENTORY_INQUIRY_ADVICE" },
   "stream": "test",
-  "sender": { "isaId": "GREENVALLEY" },
+  "sender": { "isaId": "ZEPHYRWOOD" },
   "receiver": { "isaId": "HARVESTHUB" },
   "message": { "transactionSets": [ {
     "transactionSetHeader": [ { "transactionSetIdentifierCode": "846", "transactionSetControlNumber": "0001" } ],
@@ -133,8 +133,8 @@ The distributor keeps two JSON views of every transaction set. You can see both 
 **Normalized JSON** contains business objects, which is what the order app receives:
 
 ```json
-{ "transactionType": "846", "producer": { "code": "PRD001", "name": "Green Valley Farms" },
-  "items": [ { "upc": "081007000101", "sku": "GVF-001", "name": "Organic Romaine Lettuce", "price": 38.48, "quantityAvailable": 240 } ] }
+{ "transactionType": "846", "producer": { "code": "PRD001", "name": "Zephyrwood Greens" },
+  "items": [ { "upc": "081007000101", "sku": "ZWG-001", "name": "Organic Romaine Lettuce", "price": 38.48, "quantityAvailable": 240 } ] }
 ```
 
 ## 6. Exercises

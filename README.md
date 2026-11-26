@@ -2,34 +2,22 @@
 
 A self-contained, Docker-based playground for learning **EDI (ANSI X12 004010)**. Ten farm **producers** send X12 documents over **FTP** to a **distributor**. The distributor validates, acknowledges (TA1 / 997), maps them to JSON, ingests them into its inventory, and pushes them over **REST** to an **order & billing** app where customers buy the products. Every step is traceable back to the original X12 envelope, and **RabbitMQ** carries the notifications and events.
 
-```mermaid
-flowchart LR
-  subgraph Producers["10 farm producers (simulator)"]
-    SIM[sim:producers<br/>832 · 846 · 856<br/>good + bad data]
-  end
-  subgraph FTP["FTP server (vsftpd Containerfile)"]
-    IN[/partner/to_distributor/]
-    OUT[/partner/from_distributor/]
-  end
-  subgraph Distributor["Web app 1 — Harvest Hub (distributor)"]
-    POLL[FTP poller] --> PARSE[Parse ISA/GS/ST] --> VAL[Validate<br/>TA1 · AK9 · AK5 · AK3 · AK4] --> BIZ[Business rules] --> MAP[Map X12 → JSON] --> ING[(Postgres<br/>inventory + trace)]
-    ING --> DEL[REST delivery<br/>retry + backoff]
-    VAL --> ACK[TA1 / 997]
-    UI1[React admin UI]
-  end
-  subgraph Orders["Web app 2 — Harvest Market (orders & billing)"]
-    API2[order-api] --> DB2[(Postgres)]
-    UI2[React storefront]
-  end
-  MQ{{RabbitMQ}}
-  SIM -- upload --> IN --> POLL
-  ACK -- upload --> OUT
-  DEL -- "POST /api/integration/inventory (JSON)" --> API2
-  VAL -. "edi.*.rejected / edi.*.failed" .-> MQ
-  API2 -. "order.created / order.cancelled / bill.paid (outbox)" .-> MQ
-  MQ -. notifications + order replica .-> Distributor
-  CUS[sim:customers] --> API2
-```
+[![EDI Simulator architecture — click to open full size](docs/architecture.svg)](docs/architecture.svg)
+
+<sub>Click the diagram to open it full size. Source: [docs/architecture.svg](docs/architecture.svg).</sub>
+
+> All companies, people, addresses, IDs and e-mails in this project are **fictional** (e-mails use the reserved `.example` domain). Any resemblance to real businesses is coincidental.
+
+## Demo videos
+
+Three short recordings of the real stack running locally. The previews play inline; click one to open the full-quality MP4.
+
+| 1 · Infrastructure | 2 · Distributor — EDI Control Center | 3 · Customer — Order app |
+|:---:|:---:|:---:|
+| [![Infrastructure demo](docs/demo/infra-preview.gif)](docs/demo/infra.mp4) | [![Distributor demo](docs/demo/distributor-preview.gif)](docs/demo/distributor.mp4) | [![Customer demo](docs/demo/customer-preview.gif)](docs/demo/customer.mp4) |
+| Containers, the FTP mailboxes, `sim:producers` sending good and bad X12, the pipeline log, TA1/997 acks over FTP, and RabbitMQ exchanges, bindings and messages.<br/>[▶ Full video (1:53)](docs/demo/infra.mp4) | Dashboard, envelope trace (ISA → GS → ST), annotated segments, rejections with their X12 codes, X12 ⇄ JSON, FTP drawer, validation, notifications, inventory traceability, KPIs and the X12 Inspector.<br/>[▶ Full video (2:48)](docs/demo/distributor.mp4) | Shopping the EDI-loaded inventory, cart and checkout (Net-30 bill), cancelling an order, paying a bill, and the resulting RabbitMQ events arriving at the distributor.<br/>[▶ Full video (1:48)](docs/demo/customer.mp4) |
+
+<sub>Recorded with Playwright against the running apps: see [scripts/demo](scripts/demo) to re-record them.</sub>
 
 ## Quick start
 
@@ -56,11 +44,11 @@ docker compose run --rm simulator customers -o 20
 | What | URL | Login |
 |---|---|---|
 | **Distributor** (EDI control center) | http://localhost:3000 | `admin@harvesthub.local` / `admin123` |
-| **Order app** (customer storefront) | http://localhost:3001 | `alice@freshbistro.local` / `password123` (8 seeded customers, or register) |
+| **Order app** (customer storefront) | http://localhost:3001 | `nova@copperleaf.example` / `password123` (8 seeded customers, or register) |
 | RabbitMQ management | http://localhost:15672 | `edi` / `edi` |
 | Distributor API / Prometheus metrics | http://localhost:4000/api/health · /metrics | |
 | Order API | http://localhost:4100/api/health | |
-| FTP | `ftp://localhost:21` | `distributor`/`distributor123`, producers e.g. `greenvalley`/`producer123` |
+| FTP | `ftp://localhost:21` | `distributor`/`distributor123`, producers e.g. `zephyrwood`/`producer123` |
 | Prometheus (optional) | http://localhost:9090 | `docker compose --profile observability up -d` |
 
 Reset everything (databases, FTP mailboxes, queues): `docker compose down -v`.
@@ -69,7 +57,7 @@ Reset everything (databases, FTP mailboxes, queues): `docker compose down -v`.
 
 | Role | Who | What they do |
 |---|---|---|
-| **Producers** (senders) | 10 farms: Green Valley Farms, Sunrise Orchards, Meadow Creek Dairy, … each with an ISA ID such as `GREENVALLEY` | Send X12 over FTP. Together they offer **100 farm products** (10 each) with real UPC-A check digits ([packages/shared/src/catalog.ts](packages/shared/src/catalog.ts)) |
+| **Producers** (senders) | 10 farms: Zephyrwood Greens, Quillberry Orchards, Mossvale Creamery, … each with an ISA ID such as `ZEPHYRWOOD` | Send X12 over FTP. Together they offer **100 farm products** (10 each) with real UPC-A check digits ([packages/shared/src/catalog.ts](packages/shared/src/catalog.ts)) |
 | **Distributor** (receiver) | Harvest Hub Distribution, ISA ID `HARVESTHUB` | Receives, validates, acknowledges, maps, stores, and forwards inventory to the order app. Admins see everything |
 | **Customers** | Restaurants and grocers in the order app | Buy what's in stock. Every order creates a **bill due in 30 days (Net 30)** and notifies the distributor |
 
@@ -85,7 +73,7 @@ Reset everything (databases, FTP mailboxes, queues): `docker compose down -v`.
 
 ## What happens to one file
 
-1. **Transfer.** The producer uploads `846_GREENVALLEY_000000123.x12.tmp` and renames it to `.x12`, so the distributor never reads a half-written file. The FTP poller (every 5 s) downloads it, stores its SHA-256, and moves it to `archive/`. Download failures are retried up to 5 times, then the file is moved to `error/`.
+1. **Transfer.** The producer uploads `846_ZEPHYRWOOD_000000123.x12.tmp` and renames it to `.x12`, so the distributor never reads a half-written file. The FTP poller (every 5 s) downloads it, stores its SHA-256, and moves it to `archive/`. Download failures are retried up to 5 times, then the file is moved to `error/`.
 2. **Parse.** The delimiters are read from the fixed-length ISA: the element separator is ISA character 4, ISA16 is the component separator, and the next character is the segment terminator. The file is then split into the envelope tree ISA → GS → ST…SE → GE → IEA.
 3. **Envelope validation (TA1).** Checks ISA length (106), element values, receiver = `HARVESTHUB`, sender = the mailbox owner, IEA02 = ISA13, IEA01 = group count, and duplicate control numbers.
 4. **Group validation (997 AK9).** Checks GS01 is supported, version is `004010`, GE02 = GS06 and GE01 = transaction count.
@@ -108,7 +96,7 @@ npm run sim:producers -- [options]
   -n, --count 20          transactions to send
   -b, --bad-ratio 0.25    share with injected errors
   -t, --types 832,846,856
-  -p, --producers 3       N random producers, or a list: GREENVALLEY,HAPPYHEN
+  -p, --producers 3       N random producers, or a list: ZEPHYRWOOD,PEBBLEWING
   -i, --interval 300      ms between files
       --bootstrap         first send a valid 832 from each producer (do this on a fresh DB)
   -s, --scenario ID       force one error scenario for every file
@@ -186,7 +174,13 @@ apps/
 infra/
   ftp/Containerfile  vsftpd with one mailbox per partner
   docker/Dockerfile  multi-target image (api / web / simulator)
-docs/X12-PRIMER.md   how to read an X12 envelope, using this project's files
+docs/
+  X12-PRIMER.md      how to read an X12 envelope, using this project's files
+  architecture.svg   architecture diagram
+  demo/              demo videos (MP4) + inline previews (GIF)
+scripts/
+  e2e.sh             end-to-end acceptance test (CI gate)
+  demo/              Playwright recorder for the demo videos
 ```
 
 ## Local development (hot reload)

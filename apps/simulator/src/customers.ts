@@ -13,8 +13,8 @@ export interface CustomerOptions {
 
 /** Same demo accounts the order-api seeds on startup. */
 const SEEDED = [
-  'alice@freshbistro.local', 'ben@greengrocer.local', 'carla@cornercafe.local', 'dev@sprouts-kitchen.local',
-  'emma@harborinn.local', 'felix@urbanbakery.local', 'grace@schoolmeals.local', 'hugo@farmtable.local',
+  'nova@copperleaf.example', 'orin@saltglass.example', 'pia@tinbell.example', 'quentin@emberthyme.example',
+  'rhea@gullwing.example', 'silas@crumbworks.example', 'tamsin@brightside.example', 'ulric@silverspoon.example',
 ];
 
 interface Product { id: string; name: string; price: number; available: number; uom: string }

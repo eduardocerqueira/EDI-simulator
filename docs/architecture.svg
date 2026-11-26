@@ -1,0 +1,234 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1640 1010" width="1640" height="1010" font-family="Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <title>EDI Simulator architecture</title>
+  <desc>Ten fictional farm producers send ANSI X12 832/846/856 over FTP to the Harvest Hub distributor, which validates, acknowledges (TA1/997), maps to JSON, ingests and delivers inventory over REST to the Harvest Market order app. RabbitMQ carries EDI notifications and order events.</desc>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <marker id="arrP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/>
+    </marker>
+    <filter id="sh" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0f172a" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      .t { font-size: 20px; font-weight: 700; fill: #0f172a; }
+      .s { font-size: 14px; fill: #475569; }
+      .b { font-size: 15px; font-weight: 600; fill: #0f172a; }
+      .m { font-family: 'JetBrains Mono', SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; fill: #334155; }
+      .lbl { font-size: 13.5px; font-weight: 600; fill: #1e293b; }
+      .lbls { font-size: 12.5px; fill: #475569; }
+      .n { font-size: 13px; font-weight: 700; fill: #fff; }
+      .line { stroke: #334155; stroke-width: 2.2; fill: none; }
+      .lineP { stroke: #7c3aed; stroke-width: 2.2; fill: none; stroke-dasharray: 7 5; }
+      .pill { fill: #fff; stroke: #cbd5e1; }
+    </style>
+  </defs>
+
+  <!-- background -->
+  <rect width="1640" height="1010" rx="22" fill="#f8fafc"/>
+  <text x="40" y="58" font-size="28" font-weight="800" fill="#0f172a">EDI Simulator — architecture</text>
+  <text x="40" y="86" class="s">ANSI X12 004010 B2B flow · all companies, people and data are fictional · everything runs locally with docker compose</text>
+
+  <!-- ================= Producers ================= -->
+  <g filter="url(#sh)">
+    <rect x="40" y="130" width="270" height="330" rx="16" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/>
+  </g>
+  <text x="62" y="166" class="t">Producers</text>
+  <text x="62" y="188" class="s">10 fictional farms (senders)</text>
+  <rect x="62" y="204" width="226" height="98" rx="10" class="pill"/>
+  <text x="76" y="228" class="m">ZEPHYRWOOD · QUILLBERRY</text>
+  <text x="76" y="248" class="m">MOSSVALE · PEBBLEWING</text>
+  <text x="76" y="268" class="m">GLIMMERHIVE · … (10)</text>
+  <text x="76" y="292" class="lbls">100 farm products</text>
+  <text x="62" y="326" class="b">Transaction sets</text>
+  <text x="62" y="342" class="m">832 Price/Sales Catalog</text>
+  <text x="62" y="362" class="m">846 Inventory Advice</text>
+  <text x="62" y="382" class="m">856 Ship Notice (ASN)</text>
+  <rect x="62" y="400" width="226" height="40" rx="8" fill="#065f46"/>
+  <text x="76" y="425" class="m" fill="#d1fae5" style="fill:#d1fae5">npm run sim:producers</text>
+
+  <!-- ================= FTP ================= -->
+  <g filter="url(#sh)">
+    <rect x="390" y="130" width="270" height="330" rx="16" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+  </g>
+  <text x="412" y="166" class="t">FTP server</text>
+  <text x="412" y="188" class="s">vsftpd · infra/ftp/Containerfile</text>
+  <text x="412" y="222" class="b">One mailbox per producer</text>
+  <rect x="412" y="234" width="226" height="148" rx="10" class="pill"/>
+  <text x="426" y="258" class="m">/zephyrwood/</text>
+  <text x="440" y="282" class="m">to_distributor/   ← X12</text>
+  <text x="440" y="304" class="m">from_distributor/ → acks</text>
+  <text x="440" y="326" class="m">archive/</text>
+  <text x="440" y="348" class="m">error/</text>
+  <text x="426" y="372" class="lbls">chroot per user · distributor sees all</text>
+  <text x="412" y="410" class="lbls">ports 21 + passive 21100-21110</text>
+  <text x="412" y="432" class="lbls">uploads as .tmp then rename</text>
+
+  <!-- ================= Distributor ================= -->
+  <g filter="url(#sh)">
+    <rect x="740" y="110" width="520" height="560" rx="18" fill="#f0fdf4" stroke="#16a34a" stroke-width="2.5"/>
+  </g>
+  <text x="764" y="148" class="t">Web app 1 · Harvest Hub (Distributor)</text>
+  <text x="764" y="170" class="s">distributor-api · distributor-web :3000 · ISA ZZ:HARVESTHUB</text>
+
+  <!-- pipeline column -->
+  <g>
+    <rect x="764" y="190" width="250" height="44" rx="10" fill="#fff" stroke="#86efac"/>
+    <text x="780" y="217" class="b">FTP poller</text><text x="868" y="217" class="lbls">every 5 s · retries</text>
+    <rect x="764" y="246" width="250" height="44" rx="10" fill="#fff" stroke="#86efac"/>
+    <text x="780" y="273" class="b">Parse</text><text x="830" y="273" class="lbls">delimiters · ISA/GS/ST tree</text>
+    <rect x="764" y="302" width="250" height="58" rx="10" fill="#fff" stroke="#86efac"/>
+    <text x="780" y="326" class="b">Validate</text><text x="852" y="326" class="lbls">envelope → element</text>
+    <text x="780" y="348" class="m">TA1 · AK9 · AK5 · AK3 · AK4</text>
+    <rect x="764" y="372" width="250" height="44" rx="10" fill="#fff" stroke="#86efac"/>
+    <text x="780" y="399" class="b">Business rules</text><text x="900" y="399" class="lbls">UPC · owner · price</text>
+    <rect x="764" y="428" width="250" height="44" rx="10" fill="#fff" stroke="#86efac"/>
+    <text x="780" y="455" class="b">Map X12 → JSON</text><text x="912" y="455" class="lbls">2 views</text>
+    <rect x="764" y="484" width="250" height="44" rx="10" fill="#fff" stroke="#86efac"/>
+    <text x="780" y="511" class="b">Ingest + trace</text><text x="898" y="511" class="lbls">inventory</text>
+    <path d="M889 234 V246 M889 290 V302 M889 360 V372 M889 416 V428 M889 472 V484" class="line" marker-end="url(#arr)"/>
+  </g>
+
+  <!-- right column -->
+  <rect x="1034" y="190" width="206" height="58" rx="10" fill="#fff" stroke="#86efac"/>
+  <text x="1050" y="214" class="b">Acknowledgments</text>
+  <text x="1050" y="236" class="m">TA1 + 997 builder</text>
+  <rect x="1034" y="260" width="206" height="58" rx="10" fill="#fff" stroke="#86efac"/>
+  <text x="1050" y="284" class="b">REST delivery</text>
+  <text x="1050" y="306" class="lbls">retry · exp. backoff · DEAD</text>
+  <rect x="1034" y="330" width="206" height="58" rx="10" fill="#fff" stroke="#c4b5fd"/>
+  <text x="1050" y="354" class="b">MQ publish / consume</text>
+  <text x="1050" y="376" class="lbls">notifications · order replica</text>
+  <rect x="1034" y="400" width="206" height="58" rx="10" fill="#fff" stroke="#86efac"/>
+  <text x="1050" y="424" class="b">KPIs + /metrics</text>
+  <text x="1050" y="446" class="lbls">Prometheus format</text>
+  <!-- db cylinder -->
+  <g>
+    <path d="M1050 488 v46 a87 12 0 0 0 174 0 v-46" fill="#dcfce7" stroke="#16a34a" stroke-width="1.6"/>
+    <ellipse cx="1137" cy="488" rx="87" ry="12" fill="#bbf7d0" stroke="#16a34a" stroke-width="1.6"/>
+    <text x="1137" y="520" text-anchor="middle" class="b">Postgres</text>
+    <text x="1137" y="540" text-anchor="middle" class="lbls">distributor DB</text>
+  </g>
+  <rect x="764" y="548" width="476" height="104" rx="12" fill="#14532d"/>
+  <text x="782" y="576" font-size="15" font-weight="700" fill="#fff">EDI Control Center (React + shadcn/ui)</text>
+  <text x="782" y="600" font-size="13" fill="#bbf7d0">envelope trace · X12 ⇄ JSON · validation · FTP transfers · deliveries</text>
+  <text x="782" y="620" font-size="13" fill="#bbf7d0">notifications · inventory traceability · customers &amp; billing</text>
+  <text x="782" y="640" font-size="13" fill="#bbf7d0">reports · KPIs · X12 Inspector &amp; Reference</text>
+
+  <!-- ================= Order app ================= -->
+  <g filter="url(#sh)">
+    <rect x="1330" y="130" width="270" height="380" rx="16" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  </g>
+  <text x="1352" y="166" class="t">Web app 2 · Order app</text>
+  <text x="1352" y="188" class="s">Harvest Market · :3001</text>
+  <rect x="1352" y="204" width="226" height="64" rx="10" class="pill"/>
+  <text x="1366" y="228" class="b">order-api</text>
+  <text x="1366" y="250" class="lbls">products · orders · Net-30 bills</text>
+  <rect x="1352" y="280" width="226" height="64" rx="10" class="pill"/>
+  <text x="1366" y="304" class="b">Transactional outbox</text>
+  <text x="1366" y="326" class="lbls">event saved with the order</text>
+  <rect x="1352" y="356" width="226" height="64" rx="10" class="pill"/>
+  <text x="1366" y="380" class="b">order-web storefront</text>
+  <text x="1366" y="402" class="lbls">shop · cart · orders · bills</text>
+  <g>
+    <path d="M1378 444 v34 a87 11 0 0 0 174 0 v-34" fill="#ffedd5" stroke="#ea580c" stroke-width="1.6"/>
+    <ellipse cx="1465" cy="444" rx="87" ry="11" fill="#fed7aa" stroke="#ea580c" stroke-width="1.6"/>
+    <text x="1465" y="482" text-anchor="middle" class="b">Postgres · orders DB</text>
+  </g>
+
+  <!-- Customers -->
+  <g filter="url(#sh)">
+    <rect x="1330" y="600" width="270" height="110" rx="16" fill="#fff" stroke="#ea580c" stroke-width="2" stroke-dasharray="6 4"/>
+  </g>
+  <text x="1352" y="634" class="t">Customers</text>
+  <text x="1352" y="656" class="s">8 fictional restaurants &amp; grocers</text>
+  <rect x="1352" y="668" width="226" height="30" rx="7" fill="#9a3412"/>
+  <text x="1366" y="688" class="m" style="fill:#ffedd5">npm run sim:customers</text>
+
+  <!-- ================= RabbitMQ ================= -->
+  <g filter="url(#sh)">
+    <rect x="390" y="740" width="870" height="230" rx="18" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2.5"/>
+  </g>
+  <text x="414" y="778" class="t">RabbitMQ</text>
+  <text x="556" y="778" class="s">management UI :15672 · topic exchanges · dead-letter queue</text>
+  <rect x="414" y="796" width="250" height="66" rx="10" fill="#fff" stroke="#c4b5fd"/>
+  <text x="430" y="822" class="b">exchange edi.events</text>
+  <text x="430" y="846" class="lbls">edi.interchange.* · edi.*.failed …</text>
+  <rect x="414" y="876" width="250" height="66" rx="10" fill="#fff" stroke="#c4b5fd"/>
+  <text x="430" y="902" class="b">exchange order.events</text>
+  <text x="430" y="926" class="lbls">order.created · order.cancelled · bill.paid</text>
+  <path d="M664 829 H720" class="lineP" marker-end="url(#arrP)"/>
+  <path d="M664 909 H720" class="lineP" marker-end="url(#arrP)"/>
+  <rect x="722" y="796" width="300" height="40" rx="9" fill="#ede9fe"/>
+  <text x="736" y="821" class="m">distributor.notifications</text>
+    <rect x="722" y="844" width="300" height="40" rx="9" fill="#ede9fe"/>
+  <text x="736" y="869" class="m">distributor.order-events</text>
+  <rect x="722" y="892" width="300" height="40" rx="9" fill="#ede9fe"/>
+  <text x="736" y="917" class="m">audit.all  ·  dead-letter</text>
+  <text x="1040" y="822" class="lbls">→ bell notifications</text>
+  <text x="1040" y="870" class="lbls">→ customers / orders /</text>
+  <text x="1040" y="888" class="lbls">   bills replica + stock</text>
+  <text x="1040" y="918" class="lbls">→ inspect any message</text>
+
+  <!-- ================= Arrows ================= -->
+  <!-- 1 producers -> ftp -->
+  <path d="M310 236 H388" class="line" marker-end="url(#arr)"/>
+  <circle cx="349" cy="214" r="12" fill="#0f172a"/><text x="349" y="219" text-anchor="middle" class="n">1</text>
+  <text x="318" y="260" class="lbls">upload X12</text>
+  <!-- 2 ftp -> distributor -->
+  <path d="M660 212 H762" class="line" marker-end="url(#arr)"/>
+  <circle cx="700" cy="190" r="12" fill="#0f172a"/><text x="700" y="195" text-anchor="middle" class="n">2</text>
+  <text x="668" y="234" class="lbls">poll ·</text><text x="668" y="250" class="lbls">download</text>
+  <!-- 3 acks distributor -> ftp -->
+  <path d="M740 330 H662" class="line" marker-end="url(#arr)"/>
+  <circle cx="700" cy="310" r="12" fill="#0f172a"/><text x="700" y="315" text-anchor="middle" class="n">3</text>
+  <text x="668" y="352" class="lbls">TA1 / 997</text>
+  <!-- 4 producers fetch acks -->
+  <path d="M390 380 H312" class="line" marker-end="url(#arr)"/>
+  <circle cx="349" cy="360" r="12" fill="#0f172a"/><text x="349" y="365" text-anchor="middle" class="n">4</text>
+  <text x="318" y="402" class="lbls">sim:acks</text>
+  <!-- 5 REST to order app -->
+  <path d="M1240 289 H1328" class="line" marker-end="url(#arr)"/>
+  <circle cx="1285" cy="267" r="12" fill="#0f172a"/><text x="1285" y="272" text-anchor="middle" class="n">5</text>
+  <text x="1262" y="312" class="lbls">JSON</text>
+  <text x="1262" y="328" class="lbls">REST</text>
+  <!-- 6 customers -> order app -->
+  <path d="M1465 600 V512" class="line" marker-end="url(#arr)"/>
+  <circle cx="1490" cy="556" r="12" fill="#0f172a"/><text x="1490" y="561" text-anchor="middle" class="n">6</text>
+  <text x="1508" y="560" class="lbls">REST + JWT</text>
+  <!-- 7 distributor -> edi.events -->
+  <path d="M889 670 V700 H540 V794" class="lineP" marker-end="url(#arrP)"/>
+  <circle cx="700" cy="700" r="12" fill="#7c3aed"/><text x="700" y="705" text-anchor="middle" class="n">7</text>
+  <text x="560" y="692" class="lbls">EDI events</text>
+  <!-- 8 order app outbox -> order.events -->
+  <path d="M1352 312 H1310 V730 H340 V909 H412" class="lineP" marker-end="url(#arrP)"/>
+  <circle cx="1310" cy="600" r="12" fill="#7c3aed"/><text x="1310" y="605" text-anchor="middle" class="n">8</text>
+  <text x="1158" y="722" class="lbls">order / bill events (outbox)</text>
+  <!-- 9 queues -> distributor -->
+  <path d="M1137 794 V672" class="lineP" marker-end="url(#arrP)"/>
+  <circle cx="1137" cy="700" r="12" fill="#7c3aed"/><text x="1137" y="705" text-anchor="middle" class="n">9</text>
+
+  <!-- Legend -->
+  <g transform="translate(40,500)">
+    <rect width="290" height="470" rx="16" fill="#fff" stroke="#e2e8f0"/>
+    <text x="20" y="34" class="b">Flow</text>
+    <g class="lbls">
+      <text x="20" y="64"><tspan font-weight="700" fill="#0f172a">1</tspan>  Producer uploads X12 to its mailbox</text>
+      <text x="20" y="92"><tspan font-weight="700" fill="#0f172a">2</tspan>  Distributor polls, downloads, archives</text>
+      <text x="20" y="120"><tspan font-weight="700" fill="#0f172a">3</tspan>  TA1 / 997 acks uploaded back</text>
+      <text x="20" y="148"><tspan font-weight="700" fill="#0f172a">4</tspan>  Producer downloads its acks</text>
+      <text x="20" y="176"><tspan font-weight="700" fill="#0f172a">5</tspan>  Inventory pushed as JSON over REST</text>
+      <text x="20" y="204"><tspan font-weight="700" fill="#0f172a">6</tspan>  Customers shop, order, cancel, pay</text>
+      <text x="20" y="232"><tspan font-weight="700" fill="#7c3aed">7</tspan>  Rejections / failures → edi.events</text>
+      <text x="20" y="260"><tspan font-weight="700" fill="#7c3aed">8</tspan>  Order &amp; bill events → order.events</text>
+      <text x="20" y="288"><tspan font-weight="700" fill="#7c3aed">9</tspan>  Distributor consumes: notifications,</text>
+      <text x="40" y="306">customer/order/bill replica, stock</text>
+    </g>
+    <line x1="20" y1="334" x2="60" y2="334" class="line"/><text x="70" y="339" class="lbls">synchronous (FTP / HTTP)</text>
+    <line x1="20" y1="362" x2="60" y2="362" class="lineP"/><text x="70" y="367" class="lbls">asynchronous (RabbitMQ)</text>
+    <text x="20" y="402" class="b">Traceability</text>
+    <text x="20" y="426" class="lbls">product → movement → transaction set</text>
+    <text x="20" y="446" class="lbls">→ interchange → FTP file (+ timeline)</text>
+  </g>
+</svg>

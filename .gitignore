@@ -7,3 +7,5 @@ apps/*/src/generated/
 simulator-output/
 .vite/
 coverage/
+scripts/demo/node_modules/
+scripts/demo/.out/
