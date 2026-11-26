@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2 } from '@edi/ui/icons';
 import { Badge } from '@edi/ui/components/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@edi/ui/components/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@edi/ui/components/tooltip';

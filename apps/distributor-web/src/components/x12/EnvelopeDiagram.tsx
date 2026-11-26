@@ -47,7 +47,7 @@ function Field({ code, label, value, bad }: { code: string; label: string; value
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className={cn('bg-background/80 min-w-0 rounded-md border px-2 py-1', bad && 'border-destructive bg-destructive/10')}>
+        <div className={cn('bg-background/80 min-w-0 rounded-none border px-2 py-1', bad && 'border-destructive bg-destructive/10')}>
           <div className="text-muted-foreground font-mono text-[10px]">{code}</div>
           <div className="truncate font-mono text-xs font-medium">{value || <span className="text-muted-foreground italic">empty</span>}</div>
         </div>
@@ -58,7 +58,7 @@ function Field({ code, label, value, bad }: { code: string; label: string; value
 }
 
 function Rail({ label, className }: { label: string; className: string }) {
-  return <div className={cn('flex items-center rounded-md px-3 py-1.5 text-[11px] font-semibold tracking-wide uppercase', className)}>{label}</div>;
+  return <div className={cn('flex items-center rounded-none px-3 py-1.5 text-[11px] font-semibold tracking-wide uppercase', className)}>{label}</div>;
 }
 
 /**
@@ -69,7 +69,7 @@ export function EnvelopeDiagram({ ic }: Props) {
   const icnMismatch = !!ic.trailerControlNumber && ic.trailerControlNumber !== ic.controlNumber;
   const groupCountMismatch = !!ic.declaredGroupCount && ic.declaredGroupCount !== String(ic.groupCount);
   return (
-    <div className="border-chart-4/50 bg-chart-4/5 rounded-xl border-2 p-3">
+    <div className="border-chart-4/50 bg-chart-4/5 rounded-none border-2 p-3">
       <Rail label="ISA · Interchange Control Header — the electronic envelope" className="bg-chart-4/15 text-chart-4" />
       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
         <Field code="ISA05/06" label="Interchange Sender (qualifier : ID)" value={`${ic.senderQualifier}:${ic.senderId}`} />
@@ -83,11 +83,11 @@ export function EnvelopeDiagram({ ic }: Props) {
       </div>
 
       <div className="mt-3 space-y-3 pl-3 sm:pl-6">
-        {ic.groups.length === 0 && <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">No functional groups could be read.</div>}
+        {ic.groups.length === 0 && <div className="text-muted-foreground rounded-none border border-dashed p-4 text-sm">No functional groups could be read.</div>}
         {ic.groups.map((g) => {
           const gMismatch = !!g.declaredTransactionCount && g.declaredTransactionCount !== String(g.transactionCount);
           return (
-            <div key={g.id} className="border-chart-2/60 bg-chart-2/5 rounded-xl border-2 p-3">
+            <div key={g.id} className="border-chart-2/60 bg-chart-2/5 rounded-none border-2 p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Rail label={`GS · Functional Group (${g.functionalId})`} className="bg-chart-2/20 text-[oklch(0.5_0.12_70)] dark:text-chart-2" />
                 <Badge variant={statusVariant(g.ackCode)}>997 AK9 {g.ackCode} · {ACK_LABEL[g.ackCode] ?? g.ackCode}</Badge>
@@ -108,7 +108,7 @@ export function EnvelopeDiagram({ ic }: Props) {
                   <Link
                     key={t.id}
                     to={`/edi/transactions/${t.id}`}
-                    className="border-chart-5/50 bg-chart-5/5 hover:bg-chart-5/10 block rounded-xl border-2 p-3 transition-colors"
+                    className="border-chart-5/50 bg-chart-5/5 hover:bg-chart-5/10 block rounded-none border-2 p-3 transition-colors"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <Rail label={`ST · ${t.type} ${t.typeName ?? TYPE_NAMES[t.type] ?? ''}`} className="bg-chart-5/15 text-chart-5" />
@@ -124,7 +124,7 @@ export function EnvelopeDiagram({ ic }: Props) {
                     <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                       <Field code="ST01" label="Transaction Set Identifier Code" value={t.type} />
                       <Field code="ST02" label="Transaction Set Control Number — must match SE02" value={t.controlNumber} />
-                      <div className="text-muted-foreground col-span-2 flex items-center rounded-md border border-dashed px-2 text-xs">Detail segments (BCT / BIA / BSN, N1 loop, LIN loop, HL loop, CTT…)</div>
+                      <div className="text-muted-foreground col-span-2 flex items-center rounded-none border border-dashed px-2 text-xs">Detail segments (BCT / BIA / BSN, N1 loop, LIN loop, HL loop, CTT…)</div>
                     </div>
                     <div className="mt-2">
                       <Rail label="SE · Transaction Set Trailer" className="bg-chart-5/10 text-chart-5" />

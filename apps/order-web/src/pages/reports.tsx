@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, Pie, PieChart, XAxis, YAxis } from 'recharts';
-import { BarChart3, PieChart as PieIcon } from 'lucide-react';
+import { BarChart3, PieChart as PieIcon } from '@edi/ui/icons';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@edi/ui/components/card';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@edi/ui/components/chart';
 import { Skeleton } from '@edi/ui/components/skeleton';
@@ -24,7 +24,7 @@ export function ReportsPage() {
     return (
       <div>
         <PageHeader title="Reports" />
-        <div className="grid gap-6 lg:grid-cols-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-80 rounded-xl" />)}</div>
+        <div className="grid gap-6 lg:grid-cols-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-80 rounded-none" />)}</div>
       </div>
     );
   }
@@ -60,7 +60,7 @@ export function ReportsPage() {
               <YAxis yAxisId="orders" orientation="right" tickLine={false} axisLine={false} width={30} allowDecimals={false} />
               <ChartTooltip content={<ChartTooltipContent valueFormatter={(v, k) => (k === 'spend' ? money(Number(v)) : String(v))} />} />
               <ChartLegend content={<ChartLegendContent />} />
-              <Bar yAxisId="spend" dataKey="spend" fill="var(--color-spend)" radius={[6, 6, 0, 0]} maxBarSize={48} />
+              <Bar yAxisId="spend" dataKey="spend" fill="var(--color-spend)" radius={0} maxBarSize={48} />
               <Line yAxisId="orders" dataKey="orders" stroke="var(--color-orders)" strokeWidth={2} dot />
               <Line yAxisId="orders" dataKey="cancelled" stroke="var(--color-cancelled)" strokeWidth={2} strokeDasharray="4 4" dot />
             </ComposedChart>
@@ -90,7 +90,7 @@ export function ReportsPage() {
                 <ul className="w-full space-y-2 text-sm">
                   {categoryData.map((c) => (
                     <li key={c.category} className="flex items-center gap-2">
-                      <span className="size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: c.fill }} />
+                      <span className="size-2.5 shrink-0 rounded-none" style={{ backgroundColor: c.fill }} />
                       <span className="flex-1 truncate">{c.category}</span>
                       <span className="text-muted-foreground tabular-nums">{totalCat ? Math.round((c.spend / totalCat) * 100) : 0}%</span>
                       <span className="w-20 text-right font-medium tabular-nums">{money(c.spend)}</span>
@@ -114,7 +114,7 @@ export function ReportsPage() {
                 <XAxis type="number" tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
                 <YAxis type="category" dataKey="producer" tickLine={false} axisLine={false} width={140} />
                 <ChartTooltip content={<ChartTooltipContent valueFormatter={(v) => money(Number(v))} />} />
-                <Bar dataKey="spend" fill="var(--color-spend)" radius={[0, 6, 6, 0]} maxBarSize={24} />
+                <Bar dataKey="spend" fill="var(--color-spend)" radius={0} maxBarSize={24} />
               </BarChart>
             </ChartContainer>
           </CardContent>
@@ -165,9 +165,9 @@ export function ReportsPage() {
                     <span className="flex items-center gap-2"><BillStatusBadge status={b.status} /> <span className="text-muted-foreground">{b.count}</span></span>
                     <span className="font-medium tabular-nums">{money(b.amount)}</span>
                   </div>
-                  <div className="bg-muted h-2 overflow-hidden rounded-full">
+                  <div className="bg-muted h-2 overflow-hidden rounded-none">
                     <div
-                      className="h-full rounded-full"
+                      className="h-full rounded-none"
                       style={{ width: `${(b.amount / max) * 100}%`, backgroundColor: b.status === 'PAID' ? 'var(--success)' : b.status === 'OVERDUE' ? 'var(--destructive)' : b.status === 'OPEN' ? 'var(--info)' : 'var(--muted-foreground)' }}
                     />
                   </div>
@@ -176,7 +176,7 @@ export function ReportsPage() {
             })}
             <div className="grid grid-cols-2 gap-2 pt-3">
               {data.byCategory.slice(0, 4).map((c) => (
-                <div key={c.category} className="flex items-center gap-2 rounded-lg border p-2">
+                <div key={c.category} className="flex items-center gap-2 rounded-none border p-2">
                   <CategoryIcon category={c.category} size="sm" />
                   <div className="min-w-0">
                     <p className="truncate text-xs">{c.category}</p>

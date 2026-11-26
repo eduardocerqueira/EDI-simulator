@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Button } from '@edi/ui/components/button';
 import { Drawer, DrawerBody, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from '@edi/ui/components/drawer';
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from '@edi/ui/icons';
 
 /** Confirmation prompt shown in a right-side drawer. */
 export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, destructive, loading, onConfirm, children }: {

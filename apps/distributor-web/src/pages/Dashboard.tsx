@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle, ArrowRight, CheckCircle2, CircleDollarSign, Clock, FileInput, Gauge, Hourglass, Send, ShoppingCart, Timer, Warehouse,
-} from 'lucide-react';
+} from '@edi/ui/icons';
 import { Badge } from '@edi/ui/components/badge';
 import { Button } from '@edi/ui/components/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@edi/ui/components/card';
@@ -179,7 +179,7 @@ export function DashboardPage() {
                   </span>
                   <span className="text-muted-foreground tabular-nums">{t.total}</span>
                 </div>
-                <div className="bg-muted flex h-2.5 overflow-hidden rounded-full">
+                <div className="bg-muted flex h-2.5 overflow-hidden rounded-none">
                   {t.total > 0 && (
                     <>
                       <div className="bg-chart-1" style={{ width: `${(t.ingested / t.total) * 100}%` }} />
@@ -285,10 +285,10 @@ export function DashboardPage() {
               <Link
                 key={n.id}
                 to={n.transactionId ? `/edi/transactions/${n.transactionId}` : n.interchangeId ? `/edi/interchanges/${n.interchangeId}` : '/notifications'}
-                className="hover:bg-muted/60 flex gap-3 rounded-md p-2"
+                className="hover:bg-muted/60 flex gap-3 rounded-none p-2"
               >
                 <span
-                  className={cn('mt-1.5 size-2 shrink-0 rounded-full', {
+                  className={cn('mt-1.5 size-2 shrink-0 rounded-none', {
                     ERROR: 'bg-destructive',
                     WARNING: 'bg-warning',
                     INFO: 'bg-info',

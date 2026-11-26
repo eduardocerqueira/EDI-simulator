@@ -66,7 +66,7 @@ export function DeliveriesPage() {
                   <TableCell>
                     <div className="flex items-center gap-1">
                       {d.attemptLog.map((a) => (
-                        <span key={a.id} title={`#${a.attemptNo} ${a.success ? 'ok' : a.error ?? 'failed'}`} className={cn('size-2.5 rounded-full', a.success ? 'bg-success' : 'bg-destructive')} />
+                        <span key={a.id} title={`#${a.attemptNo} ${a.success ? 'ok' : a.error ?? 'failed'}`} className={cn('size-2.5 rounded-none', a.success ? 'bg-success' : 'bg-destructive')} />
                       ))}
                       <span className="text-muted-foreground ml-1 text-xs">{d.attempts}/{d.maxAttempts}</span>
                     </div>

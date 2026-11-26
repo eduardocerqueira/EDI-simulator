@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Ban, CheckCircle2, CircleDot, FileText, Info, Radio, XCircle } from 'lucide-react';
+import { ArrowLeft, Ban, CheckCircle2, CircleDot, FileText, Info, Radio, XCircle } from '@edi/ui/icons';
 import { Button } from '@edi/ui/components/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@edi/ui/components/card';
 import { Separator } from '@edi/ui/components/separator';
@@ -108,7 +108,7 @@ export function OrderDetailPage() {
               </TableFooter>
             </Table>
             {o.notes && (
-              <div className="bg-muted/50 mt-4 rounded-lg border p-3 text-sm">
+              <div className="bg-muted/50 mt-4 rounded-none border p-3 text-sm">
                 <p className="text-muted-foreground mb-1 text-xs font-medium uppercase">Notes</p>
                 {o.notes}
               </div>
@@ -146,7 +146,7 @@ export function OrderDetailPage() {
               <ol className="relative space-y-5 border-l pl-5">
                 {timeline.map((t, i) => (
                   <li key={i} className="relative">
-                    <span className="bg-background absolute top-0.5 -left-[29px] flex size-4 items-center justify-center rounded-full">
+                    <span className="bg-background absolute top-0.5 -left-[29px] flex size-4 items-center justify-center rounded-none">
                       <t.icon className={`size-4 ${t.tone}`} />
                     </span>
                     <p className="text-sm font-medium">{t.title}</p>
@@ -178,7 +178,7 @@ export function OrderDetailPage() {
           </div>
         }
       >
-        <div className="bg-muted/50 flex gap-2 rounded-md border p-3 text-xs"><Info className="size-4 shrink-0" /> This cannot be undone.</div>
+        <div className="bg-muted/50 flex gap-2 rounded-none border p-3 text-xs"><Info className="size-4 shrink-0" /> This cannot be undone.</div>
       </ConfirmDialog>
     </div>
   );

@@ -1,11 +1,11 @@
-import { Minus, Plus } from 'lucide-react';
+import { Minus, Plus } from '@edi/ui/icons';
 import { Button } from '@edi/ui/components/button';
 import { cn } from '@edi/ui/lib/utils';
 
 export function QuantityStepper({ value, max, onChange, size = 'default', className }: { value: number; max: number; onChange: (v: number) => void; size?: 'sm' | 'default'; className?: string }) {
   const h = size === 'sm' ? 'h-8' : 'h-9';
   return (
-    <div className={cn('inline-flex items-center rounded-md border bg-background', h, className)}>
+    <div className={cn('inline-flex items-center rounded-none border bg-background', h, className)}>
       <Button type="button" variant="ghost" size="icon" className={cn('rounded-r-none', size === 'sm' ? 'size-8' : 'size-9')} onClick={() => onChange(value - 1)} aria-label="Decrease">
         <Minus />
       </Button>

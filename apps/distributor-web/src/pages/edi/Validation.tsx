@@ -98,7 +98,7 @@ export function ValidationPage() {
           <button
             key={l.level}
             onClick={() => set({ level: f.level === l.level ? '' : l.level })}
-            className={cn('hover:bg-muted/60 cursor-pointer rounded-lg border p-3 text-left transition-colors', f.level === l.level && 'border-primary bg-accent')}
+            className={cn('hover:bg-muted/60 cursor-pointer rounded-none border p-3 text-left transition-colors', f.level === l.level && 'border-primary bg-accent')}
           >
             <div className="flex items-center justify-between">
               <LevelBadge level={l.level} />

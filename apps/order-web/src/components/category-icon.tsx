@@ -1,4 +1,4 @@
-import { Apple, Beef, Bean, Carrot, Cherry, Coffee, Droplet, Egg, Flame, Leaf, Milk, Package, Wheat, Drumstick, type LucideIcon } from 'lucide-react';
+import { Apple, Beef, Bean, Carrot, Cherry, Coffee, Droplet, Egg, Flame, Leaf, Milk, Package, Wheat, Drumstick, type LucideIcon } from '@edi/ui/icons';
 import { cn } from '@edi/ui/lib/utils';
 
 const ICONS: Record<string, { icon: LucideIcon; tone: string }> = {
@@ -24,7 +24,7 @@ export function categoryMeta(category: string) {
 
 export function CategoryIcon({ category, className, size = 'md' }: { category: string; className?: string; size?: 'sm' | 'md' | 'lg' }) {
   const { icon: Icon, tone } = categoryMeta(category);
-  const box = size === 'sm' ? 'size-8 rounded-md' : size === 'lg' ? 'size-14 rounded-xl' : 'size-10 rounded-lg';
+  const box = size === 'sm' ? 'size-8 rounded-none' : size === 'lg' ? 'size-14 rounded-none' : 'size-10 rounded-none';
   const ic = size === 'sm' ? 'size-4' : size === 'lg' ? 'size-7' : 'size-5';
   return (
     <div className={cn('flex shrink-0 items-center justify-center', box, tone, className)}>

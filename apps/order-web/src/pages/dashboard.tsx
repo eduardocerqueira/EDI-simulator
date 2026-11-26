@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
-import { AlertTriangle, ArrowRight, CalendarClock, DollarSign, Package, Receipt, ShoppingBasket, Store, BarChart3 } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarClock, DollarSign, Package, Receipt, ShoppingBasket, Store, BarChart3 } from '@edi/ui/icons';
 import { Button } from '@edi/ui/components/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@edi/ui/components/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@edi/ui/components/chart';
@@ -99,7 +99,7 @@ export function DashboardPage() {
                     <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} />
                     <YAxis tickLine={false} axisLine={false} width={56} tickFormatter={(v) => `$${v}`} />
                     <ChartTooltip content={<ChartTooltipContent valueFormatter={(v, k) => (k === 'spend' ? money(Number(v)) : String(v))} />} />
-                    <Bar dataKey="spend" fill="var(--color-spend)" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="spend" fill="var(--color-spend)" radius={0} />
                   </BarChart>
                 )}
               </ChartContainer>
@@ -117,7 +117,7 @@ export function DashboardPage() {
               <Skeleton className="h-28 w-full" />
             ) : next ? (
               <>
-                <div className="bg-muted/50 rounded-xl border p-4">
+                <div className="bg-muted/50 rounded-none border p-4">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-sm">{next.billNumber}</span>
                     <BillStatusBadge status={next.effectiveStatus} />
@@ -158,8 +158,8 @@ export function DashboardPage() {
             <ul className="divide-y">
               {data.recentOrders.map((o) => (
                 <li key={o.id}>
-                  <Link to={`/orders/${o.id}`} className="hover:bg-muted/50 -mx-2 flex items-center gap-4 rounded-lg px-2 py-3 transition-colors">
-                    <div className="bg-primary/10 text-primary flex size-10 items-center justify-center rounded-lg"><Package className="size-5" /></div>
+                  <Link to={`/orders/${o.id}`} className="hover:bg-muted/50 -mx-2 flex items-center gap-4 rounded-none px-2 py-3 transition-colors">
+                    <div className="bg-primary/10 text-primary flex size-10 items-center justify-center rounded-none"><Package className="size-5" /></div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-sm font-medium">{o.orderNumber}</span>
@@ -184,7 +184,7 @@ export function DashboardPage() {
 
 function QuickLink({ to, icon: Icon, label }: { to: string; icon: typeof Package; label: string }) {
   return (
-    <Link to={to} className="hover:border-primary/50 hover:bg-primary/5 flex items-center gap-2 rounded-lg border p-2.5 text-sm transition-colors">
+    <Link to={to} className="hover:border-primary/50 hover:bg-primary/5 flex items-center gap-2 rounded-none border p-2.5 text-sm transition-colors">
       <Icon className="text-primary size-4" /> {label}
     </Link>
   );

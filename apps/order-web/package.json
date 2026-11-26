@@ -13,7 +13,6 @@
     "@edi/shared": "*",
     "@edi/ui": "*",
     "@tanstack/react-query": "^5.81.0",
-    "lucide-react": "^0.525.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.3",

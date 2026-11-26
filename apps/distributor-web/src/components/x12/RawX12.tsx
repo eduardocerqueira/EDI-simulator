@@ -1,4 +1,4 @@
-import { Copy } from 'lucide-react';
+import { Copy } from '@edi/ui/icons';
 import { Button } from '@edi/ui/components/button';
 import { toast } from '@edi/ui/components/sonner';
 import { EmptyState } from '@/components/common';
@@ -22,7 +22,7 @@ export function RawX12({ content, elementSep = '*', segmentTerm = '~', maxHeight
       >
         <Copy /> Copy
       </Button>
-      <pre className={`bg-muted/40 overflow-auto rounded-lg border p-4 font-mono text-xs leading-6 ${maxHeight}`}>
+      <pre className={`bg-muted/40 overflow-auto rounded-none border p-4 font-mono text-xs leading-6 ${maxHeight}`}>
         {segments.map((seg, i) => {
           const parts = seg.split(elementSep);
           const id = parts[0]!;

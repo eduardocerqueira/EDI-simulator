@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowRight, CalendarClock, FileText, Loader2, Truck } from 'lucide-react';
+import { ArrowRight, CalendarClock, FileText, Loader2, Truck } from '@edi/ui/icons';
 import { Button } from '@edi/ui/components/button';
 import { Input } from '@edi/ui/components/input';
 import { Label } from '@edi/ui/components/label';
@@ -18,16 +18,16 @@ function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
       <div className="relative hidden overflow-hidden bg-gradient-to-br from-orange-500 via-amber-500 to-lime-600 p-10 text-white lg:flex lg:flex-col">
-        <div className="absolute -top-24 -right-24 size-96 rounded-full bg-white/10 blur-2xl" />
-        <div className="absolute -bottom-32 -left-16 size-96 rounded-full bg-black/10 blur-2xl" />
+        <div className="absolute -top-24 -right-24 size-96 rounded-none bg-white/10 blur-2xl" />
+        <div className="absolute -bottom-32 -left-16 size-96 rounded-none bg-black/10 blur-2xl" />
         <Logo className="relative [&_.text-muted-foreground]:text-white/80 [&>div:first-child]:bg-white [&>div:first-child]:text-orange-600" />
         <div className="relative mt-auto max-w-md">
           <h2 className="text-4xl leading-tight font-semibold tracking-tight">Farm-fresh wholesale, straight from 10 partner producers.</h2>
           <p className="mt-4 text-white/85">Order produce, dairy, meat, grains and pantry staples for your kitchen or store. Stock is synced live from our distributor's EDI feed.</p>
           <ul className="mt-8 space-y-3 text-sm">
-            <li className="flex items-center gap-3"><span className="flex size-8 items-center justify-center rounded-lg bg-white/15"><Truck className="size-4" /></span> Inventory updated by producer 832 / 846 / 856 EDI transactions</li>
-            <li className="flex items-center gap-3"><span className="flex size-8 items-center justify-center rounded-lg bg-white/15"><FileText className="size-4" /></span> Every order creates an invoice automatically</li>
-            <li className="flex items-center gap-3"><span className="flex size-8 items-center justify-center rounded-lg bg-white/15"><CalendarClock className="size-4" /></span> Net 30 payment terms on every bill</li>
+            <li className="flex items-center gap-3"><span className="flex size-8 items-center justify-center rounded-none bg-white/15"><Truck className="size-4" /></span> Inventory updated by producer 832 / 846 / 856 EDI transactions</li>
+            <li className="flex items-center gap-3"><span className="flex size-8 items-center justify-center rounded-none bg-white/15"><FileText className="size-4" /></span> Every order creates an invoice automatically</li>
+            <li className="flex items-center gap-3"><span className="flex size-8 items-center justify-center rounded-none bg-white/15"><CalendarClock className="size-4" /></span> Net 30 payment terms on every bill</li>
           </ul>
         </div>
       </div>
@@ -81,11 +81,11 @@ export function LoginPage() {
           {busy ? <Loader2 className="animate-spin" /> : <ArrowRight />} Sign in
         </Button>
       </form>
-      <div className="bg-muted/60 mt-6 rounded-lg border p-3 text-xs">
+      <div className="bg-muted/60 mt-6 rounded-none border p-3 text-xs">
         <p className="mb-2 font-medium">Demo accounts (password <code className="font-mono">password123</code>)</p>
         <div className="flex flex-wrap gap-1.5">
           {DEMO.map((d) => (
-            <button key={d.email} type="button" onClick={() => { setEmail(d.email); setPassword('password123'); }} className="bg-background hover:border-primary cursor-pointer rounded-md border px-2 py-1 transition-colors">
+            <button key={d.email} type="button" onClick={() => { setEmail(d.email); setPassword('password123'); }} className="bg-background hover:border-primary cursor-pointer rounded-none border px-2 py-1 transition-colors">
               {d.company}
             </button>
           ))}

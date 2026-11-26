@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingBasket, Trash2, ArrowRight } from 'lucide-react';
+import { ShoppingBasket, Trash2, ArrowRight } from '@edi/ui/icons';
 import { Button } from '@edi/ui/components/button';
 import { Separator } from '@edi/ui/components/separator';
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@edi/ui/components/sheet';

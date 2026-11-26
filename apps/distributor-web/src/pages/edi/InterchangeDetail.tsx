@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, ArrowRight, CheckCircle2, Download, FileText, HardDrive, Info, Server, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, Download, FileText, HardDrive, Info, Server, XCircle } from '@edi/ui/icons';
 import { Badge } from '@edi/ui/components/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@edi/ui/components/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@edi/ui/components/tabs';
@@ -97,7 +97,7 @@ function Verdict({ ic }: { ic: InterchangeDetail }) {
   }[ic.status] ?? { icon: Info, cls: '', text: '' };
   const Icon = cfg.icon;
   return (
-    <div className={cn('flex items-start gap-3 rounded-lg border p-4', cfg.cls)}>
+    <div className={cn('flex items-start gap-3 rounded-none border p-4', cfg.cls)}>
       <Icon className="mt-0.5 size-5 shrink-0" />
       <div className="text-sm">
         <div className="font-semibold">{ic.status.replace('_', ' ')}</div>
@@ -209,7 +209,7 @@ export function InterchangeDetailPage() {
             {ic.groups.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {ic.groups.flatMap((g) => g.transactions).map((t) => (
-                  <Link key={t.id} to={`/edi/transactions/${t.id}`} className="hover:bg-muted inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
+                  <Link key={t.id} to={`/edi/transactions/${t.id}`} className="hover:bg-muted inline-flex items-center gap-2 rounded-none border px-3 py-1.5 text-sm">
                     <FileText className="size-4" /> {t.type} #{t.controlNumber} <StatusBadge status={t.status} /> <ArrowRight className="size-3.5" />
                   </Link>
                 ))}

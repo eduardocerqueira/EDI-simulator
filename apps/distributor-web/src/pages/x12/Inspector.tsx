@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { CheckCircle2, Loader2, ScanSearch, Trash2, XCircle } from 'lucide-react';
+import { CheckCircle2, Loader2, ScanSearch, Trash2, XCircle } from '@edi/ui/icons';
 import { Badge } from '@edi/ui/components/badge';
 import { Button } from '@edi/ui/components/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@edi/ui/components/card';
@@ -93,7 +93,7 @@ export function InspectorPage() {
             </Card>
           ) : (
             <>
-              <div className={cn('flex items-start gap-3 rounded-lg border p-4', r.ok ? 'border-success/40 bg-success/8' : 'border-destructive/40 bg-destructive/8')}>
+              <div className={cn('flex items-start gap-3 rounded-none border p-4', r.ok ? 'border-success/40 bg-success/8' : 'border-destructive/40 bg-destructive/8')}>
                 {r.ok ? <CheckCircle2 className="text-success mt-0.5 size-5" /> : <XCircle className="text-destructive mt-0.5 size-5" />}
                 <div className="text-sm">
                   <div className="font-semibold">{r.ok ? 'Valid interchange' : 'Problems found'}</div>

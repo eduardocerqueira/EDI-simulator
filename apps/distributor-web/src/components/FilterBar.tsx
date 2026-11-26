@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X } from '@edi/ui/icons';
 import { Button } from '@edi/ui/components/button';
 import { Input } from '@edi/ui/components/input';
 

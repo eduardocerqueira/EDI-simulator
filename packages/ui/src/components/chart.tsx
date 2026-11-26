@@ -85,7 +85,7 @@ function ChartTooltipContent({
   const { config } = useChart();
   if (!active || !payload?.length) return null;
   return (
-    <div className={cn('border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl', className)}>
+    <div className={cn('border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-none border px-2.5 py-1.5 text-xs shadow-xl', className)}>
       {!hideLabel && <div className="font-medium">{labelFormatter ? labelFormatter(label) : String(label ?? '')}</div>}
       <div className="grid gap-1.5">
         {payload.map((item, i) => {
@@ -94,7 +94,7 @@ function ChartTooltipContent({
           const color = item.color ?? (item.payload?.fill as string | undefined);
           return (
             <div key={key + i} className="flex w-full items-center gap-2">
-              <div className={cn('shrink-0 rounded-[2px]', indicator === 'dot' ? 'size-2.5' : 'h-3 w-1')} style={{ backgroundColor: color }} />
+              <div className={cn('shrink-0 rounded-none', indicator === 'dot' ? 'size-2.5' : 'h-3 w-1')} style={{ backgroundColor: color }} />
               <span className="text-muted-foreground">{c?.label ?? item.name}</span>
               <span className="text-foreground ml-auto font-mono font-medium tabular-nums">
                 {valueFormatter ? valueFormatter(item.value, key) : typeof item.value === 'number' ? item.value.toLocaleString() : String(item.value ?? '')}
@@ -118,7 +118,7 @@ function ChartLegendContent({ payload, className }: { payload?: Array<{ value?: 
         const key = String(item.dataKey ?? item.value);
         return (
           <div key={key} className="flex items-center gap-1.5">
-            <div className="size-2 shrink-0 rounded-[2px]" style={{ backgroundColor: item.color }} />
+            <div className="size-2 shrink-0 rounded-none" style={{ backgroundColor: item.color }} />
             <span className="text-muted-foreground">{config[key]?.label ?? item.value}</span>
           </div>
         );

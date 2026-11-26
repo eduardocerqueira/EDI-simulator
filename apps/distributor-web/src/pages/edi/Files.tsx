@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { ArrowDownToLine, ArrowUpFromLine, Eye } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, Eye } from '@edi/ui/icons';
 import { Badge } from '@edi/ui/components/badge';
 import { Button } from '@edi/ui/components/button';
 import { Card } from '@edi/ui/components/card';
