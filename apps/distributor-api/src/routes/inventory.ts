@@ -80,14 +80,45 @@ export async function inventoryRoutes(app: FastifyInstance) {
       where: { id },
       include: {
         partner: true,
-        movements: {
-          orderBy: { createdAt: 'desc' },
-          take: 200,
-          include: { transaction: { select: { id: true, type: true, controlNumber: true, status: true, interchange: { select: { id: true, controlNumber: true, receivedAt: true, fileTransfer: { select: { fileName: true } } } } } } },
-        },
+        // lightweight series for the quantity chart; the ledger is paginated below
+        movements: { orderBy: { createdAt: 'desc' }, take: 100, select: { createdAt: true, quantityAfter: true } },
+        _count: { select: { movements: true } },
       },
     });
     if (!p) return reply.code(404).send({ error: 'Product not found' });
     return p;
+  });
+
+  /** Movement ledger for one product: paginated, filterable by movement type and source (EDI or order). */
+  app.get('/inventory/:id/movements', async (req) => {
+    const { id } = req.params as { id: string };
+    const { skip, take, page, pageSize } = paging(req);
+    const f = q(req);
+    const where: Prisma.InventoryMovementWhereInput = {
+      productId: id,
+      ...(f.type ? { type: f.type } : {}),
+      ...(f.source === 'edi' ? { transactionId: { not: null } } : f.source === 'order' ? { orderNumber: { not: null } } : {}),
+      ...(f.q?.trim()
+        ? {
+            OR: [
+              { orderNumber: { contains: f.q.trim(), mode: 'insensitive' as const } },
+              { note: { contains: f.q.trim(), mode: 'insensitive' as const } },
+              { transaction: { controlNumber: { contains: f.q.trim() } } },
+              { transaction: { interchange: { controlNumber: { contains: f.q.trim() } } } },
+            ],
+          }
+        : {}),
+    };
+    const [items, total] = await Promise.all([
+      prisma.inventoryMovement.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+        include: { transaction: { select: { id: true, type: true, controlNumber: true, status: true, interchange: { select: { id: true, controlNumber: true, receivedAt: true, fileTransfer: { select: { fileName: true } } } } } } },
+      }),
+      prisma.inventoryMovement.count({ where }),
+    ]);
+    return { items, total, page, pageSize };
   });
 }

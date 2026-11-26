@@ -5,6 +5,9 @@ import { metrics } from './metrics.js';
 import { sendPendingAcks } from './pipeline/acks.js';
 import { deliverPending } from './pipeline/delivery.js';
 import { processFile } from './pipeline/process.js';
+import { syncActionItems } from './actions/backlog.js';
+import { resend } from './email/resend.js';
+import { producerWorld } from './email/world.js';
 
 /** Run `fn` forever, `everyMs` after each completion (never overlapping). */
 function loop(name: string, everyMs: number, fn: () => Promise<unknown>) {
@@ -36,5 +39,9 @@ export function startWorkers() {
     log.warn('[ftp] FTP_ENABLED=false — inbound polling disabled');
   }
   loop('delivery', config.delivery.pollMs, deliverPending);
+  // failed interchanges → EDI backlog (action items)
+  loop('action-items', 10_000, () => syncActionItems());
+  // simulation: producers answering report e-mails (they reach us through email.received webhooks)
+  resend.setWorld(producerWorld);
   log.info(`[workers] FTP poll every ${config.ftp.pollIntervalMs}ms on ${config.ftp.host}:${config.ftp.port}, delivery to ${config.orderApi.url}`);
 }

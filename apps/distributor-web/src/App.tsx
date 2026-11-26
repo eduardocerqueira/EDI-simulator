@@ -11,6 +11,7 @@ import { FilesPage } from '@/pages/edi/Files';
 import { ValidationPage } from '@/pages/edi/Validation';
 import { DeliveriesPage } from '@/pages/edi/Deliveries';
 import { AcksPage } from '@/pages/edi/Acks';
+import { ActionItemsPage } from '@/pages/edi/ActionItems';
 import { NotificationsPage } from '@/pages/Notifications';
 import { PartnersPage, PartnerDetailPage } from '@/pages/Partners';
 import { InventoryPage, ProductDetailPage } from '@/pages/Inventory';
@@ -19,8 +20,9 @@ import { ReportsPage } from '@/pages/Reports';
 import { KpisPage } from '@/pages/Kpis';
 import { InspectorPage } from '@/pages/x12/Inspector';
 import { ReferencePage } from '@/pages/x12/Reference';
-import { ClusterPage } from '@/pages/platform/Cluster';
-import { StoragePage } from '@/pages/platform/Storage';
+import { ClusterSection } from '@/pages/platform/Cluster';
+import { PlatformPage } from '@/pages/platform/Platform';
+import { StorageSection } from '@/pages/platform/Storage';
 import { EmptyState } from '@/components/common';
 
 export function App() {
@@ -47,6 +49,7 @@ export function App() {
         <Route path="edi/validation" element={<ValidationPage />} />
         <Route path="edi/deliveries" element={<DeliveriesPage />} />
         <Route path="edi/acks" element={<AcksPage />} />
+        <Route path="edi/action-items" element={<ActionItemsPage />} />
         <Route path="partners" element={<PartnersPage />} />
         <Route path="partners/:id" element={<PartnerDetailPage />} />
         <Route path="inventory" element={<InventoryPage />} />
@@ -57,8 +60,10 @@ export function App() {
         <Route path="bills" element={<BillsPage />} />
         <Route path="x12/inspector" element={<InspectorPage />} />
         <Route path="x12/reference" element={<ReferencePage />} />
-        <Route path="platform" element={<ClusterPage />} />
-        <Route path="platform/storage" element={<StoragePage />} />
+        <Route path="platform" element={<PlatformPage />}>
+          <Route index element={<ClusterSection />} />
+          <Route path="storage" element={<StorageSection />} />
+        </Route>
         <Route path="*" element={<EmptyState title="Page not found" description="The page you are looking for does not exist." />} />
       </Route>
     </Routes>

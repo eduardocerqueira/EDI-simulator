@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@edi/ui/components/card';
@@ -7,9 +6,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@edi/ui/components/tab
 import { api } from '@/lib/api';
 import { fmt } from '@/lib/format';
 import type { Kpis } from '@/lib/types';
-import { ErrorState, LoadingPage, PageHeader, RangeSelect, StatCard } from '@/components/common';
+import { ErrorState, LoadingPage, NativeSelect, PageHeader, StatCard } from '@/components/common';
+import { FilterBar } from '@/components/FilterBar';
+import { LAYER } from '@/lib/actions';
+import { usePartners, useUrlFilters } from '@/lib/hooks';
+import { EdiErrorsReport } from '@/pages/reports/EdiErrors';
 import { DonutChart, HBarChart, VBarChart } from '@/components/charts';
-import { CircleDollarSign, Receipt, ShoppingCart, XCircle } from 'lucide-react';
+import { CircleDollarSign, Receipt, ShoppingCart, TriangleAlert, XCircle } from '@edi/ui/icons';
 
 interface ReportData {
   days: number;
@@ -24,8 +27,20 @@ interface ReportData {
 
 const money = (v: number) => fmt.moneyCompact(v);
 
+const PERIODS = [
+  { value: '1', label: 'Last 24 hours' },
+  { value: '7', label: 'Last 7 days' },
+  { value: '30', label: 'Last 30 days' },
+  { value: '90', label: 'Last 90 days' },
+];
+const EDI_TABS = ['edi', 'errors'];
+
 export function ReportsPage() {
-  const [days, setDays] = useState(30);
+  const { values: f, set } = useUrlFilters({ tab: 'sales', days: '30', partnerId: '', type: '', layer: '', code: '' });
+  const partners = usePartners();
+  const days = Number(f.days) || 30;
+  const isEdi = EDI_TABS.includes(f.tab);
+  const filtered = !!(f.partnerId || f.type || f.layer || f.code || f.days !== '30');
   const r = useQuery({ queryKey: ['reports', days], queryFn: () => api<ReportData>(`/reports?days=${days}`), refetchInterval: 15000 });
   const k = useQuery({ queryKey: ['kpis', days * 24], queryFn: () => api<Kpis>(`/kpis?hours=${days * 24}`), refetchInterval: 15000 });
   if (r.isLoading || k.isLoading) return <LoadingPage />;
@@ -38,18 +53,52 @@ export function ReportsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Reports"
-        description="Customer, order and billing reports, plus EDI volume by type and producer."
-        actions={<RangeSelect value={days} onChange={setDays} options={[[7, '7d'], [30, '30d'], [90, '90d']]} />}
-      />
-      <Tabs defaultValue="sales">
+      <PageHeader title="Reports" description="Customer, order and billing reports, EDI volume, and EDI errors per producer with drill-down and exception reports." />
+      <div className="bg-card mb-4 rounded-none border">
+        <FilterBar onReset={filtered ? () => set({ days: '30', partnerId: '', type: '', layer: '', code: '' }) : undefined}>
+          <NativeSelect value={f.days} onChange={(v) => set({ days: v || '30' })} options={PERIODS} />
+          {isEdi && (
+            <>
+              <NativeSelect value={f.partnerId} onChange={(v) => set({ partnerId: v })} placeholder="All producers" options={(partners.data ?? []).map((p) => ({ value: p.id, label: p.name }))} />
+              <NativeSelect
+                value={f.type}
+                onChange={(v) => set({ type: v })}
+                placeholder="All transaction types"
+                options={[
+                  { value: '832', label: '832 Price/Sales Catalog' },
+                  { value: '846', label: '846 Inventory Advice' },
+                  { value: '856', label: '856 Ship Notice' },
+                ]}
+              />
+            </>
+          )}
+          {f.tab === 'errors' && (
+            <>
+              <NativeSelect value={f.layer} onChange={(v) => set({ layer: v })} placeholder="Any layer" options={['ENVELOPE', 'SYNTAX', 'BUSINESS'].map((l) => ({ value: l, label: LAYER[l]!.label }))} />
+              {f.code && (
+                <button onClick={() => set({ code: '' })} className="bg-primary/10 text-primary inline-flex h-9 cursor-pointer items-center gap-1 rounded-none px-3 font-mono text-xs">
+                  code: {f.code} ✕
+                </button>
+              )}
+            </>
+          )}
+          {!isEdi && <span className="text-muted-foreground text-xs">Producer and transaction-type filters apply to the EDI tabs.</span>}
+        </FilterBar>
+      </div>
+      <Tabs value={f.tab} onValueChange={(v) => set({ tab: v })}>
         <TabsList>
           <TabsTrigger value="sales">Orders & revenue</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="customers">Customers & products</TabsTrigger>
           <TabsTrigger value="edi">EDI volume</TabsTrigger>
+          <TabsTrigger value="errors">
+            <TriangleAlert /> EDI errors
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="errors" className="mt-4">
+          <EdiErrorsReport filters={{ days: f.days, partnerId: f.partnerId, type: f.type, layer: f.layer, code: f.code }} setFilter={(patch) => set(patch)} />
+        </TabsContent>
 
         <TabsContent value="sales" className="mt-4 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -175,7 +224,7 @@ export function ReportsPage() {
             <CardHeader><CardTitle>Transaction sets by producer</CardTitle></CardHeader>
             <CardContent>
               <VBarChart
-                data={kp.partners.map((p) => ({ name: p.isaId, accepted: p.accepted, rejected: p.transactions - p.accepted }))}
+                data={kp.partners.filter((p) => !f.partnerId || p.id === f.partnerId).map((p) => ({ name: p.isaId, accepted: p.accepted, rejected: p.transactions - p.accepted }))}
                 xKey="name"
                 stacked
                 config={{ accepted: { label: 'Accepted', color: 'var(--chart-1)' }, rejected: { label: 'Rejected', color: 'var(--chart-3)' } }}
