@@ -1,0 +1,233 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 920" width="1500" height="920" font-family="Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <title>EDI Simulator HA FTP platform</title>
+  <desc>Producers and the distributor reach FTP through an HAProxy load balancer that balances control connections across three vsftpd nodes and routes each passive port range to its node. All nodes mount one shared storage volume. A platform controller probes each node's 220 greeting, and when a node fails it removes the container and spawns a replacement in the same slot with the same volume and network alias. Prometheus scrapes the load balancer and controller and evaluates alert rules; platform events flow through RabbitMQ to the EDI Control Center Platform area.</desc>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <marker id="arrP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/>
+    </marker>
+    <marker id="arrO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e6522c"/>
+    </marker>
+    <filter id="sh" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0f172a" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      .t { font-size: 19px; font-weight: 700; fill: #0f172a; }
+      .s { font-size: 14px; fill: #475569; }
+      .b { font-size: 15px; font-weight: 700; fill: #0f172a; }
+      .m { font-family: 'JetBrains Mono', SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; fill: #334155; }
+      .lbl { font-size: 13px; font-weight: 600; fill: #1e293b; }
+      .lbls { font-size: 12.5px; fill: #475569; }
+      .w { font-size: 12.5px; fill: #cbd5e1; }
+      .n { font-size: 12px; font-weight: 700; fill: #fff; }
+      .line { stroke: #334155; stroke-width: 2; fill: none; }
+      .lineP { stroke: #7c3aed; stroke-width: 2; fill: none; stroke-dasharray: 7 5; }
+      .lineR { stroke: #dc2626; stroke-width: 2; fill: none; stroke-dasharray: 6 4; }
+      .lineO { stroke: #e6522c; stroke-width: 2; fill: none; stroke-dasharray: 4 3; }
+    </style>
+  </defs>
+
+  <rect width="1500" height="920" rx="22" fill="#f8fafc"/>
+  <text x="40" y="58" font-size="27" font-weight="800" fill="#0f172a">FTP platform — high availability &amp; self-healing</text>
+  <text x="40" y="86" class="s">one service name (ftp:21) · 3 identical vsftpd nodes · one shared volume · failed nodes are replaced automatically</text>
+
+  <!-- ================= Clients ================= -->
+  <g filter="url(#sh)">
+    <rect x="40" y="140" width="240" height="84" rx="14" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/>
+    <rect x="40" y="244" width="240" height="84" rx="14" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  </g>
+  <text x="60" y="172" class="b">Producers</text>
+  <text x="60" y="194" class="lbls">10 farms · upload X12, fetch acks</text>
+  <text x="60" y="212" class="lbls">retry upload 4× with backoff</text>
+  <text x="60" y="276" class="b">Distributor</text>
+  <text x="60" y="298" class="lbls">poll every 5 s · download ·</text>
+  <text x="60" y="316" class="lbls">archive · upload TA1 / 997</text>
+
+  <!-- chaos -->
+  <rect x="40" y="398" width="240" height="132" rx="14" fill="#fef2f2" stroke="#dc2626" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="60" y="428" class="b" style="fill:#991b1b">Chaos</text>
+  <rect x="58" y="440" width="204" height="26" rx="6" fill="#7f1d1d"/>
+  <text x="70" y="458" class="m" style="fill:#fff">npm run chaos:ftp</text>
+  <text x="60" y="488" class="lbls">docker pause (hang) or kill (crash)</text>
+  <text x="60" y="508" class="lbls">or Platform → Simulate failure</text>
+
+  <!-- ================= Load balancer ================= -->
+  <g filter="url(#sh)">
+    <rect x="340" y="140" width="560" height="130" rx="14" fill="#0f172a"/>
+  </g>
+  <text x="362" y="172" font-size="17" font-weight="700" fill="#fff">Load balancer · ftp:21</text>
+  <text x="560" y="172" class="w">HAProxy 2.9 · TCP mode</text>
+  <text x="362" y="200" class="w">control :21 → leastconn across healthy nodes</text>
+  <text x="362" y="220" class="w">passive 21100–21129 → the node that owns the range</text>
+  <text x="362" y="240" class="w">health check: expect "220" · every 1 s · fall 2 · rise 2</text>
+  <text x="362" y="260" class="w">on down: shut its sessions · :8404 stats + /metrics</text>
+
+  <path d="M280 182 H338" class="line" marker-end="url(#arr)"/>
+  <path d="M280 286 H300 V230 H338" class="line" marker-end="url(#arr)"/>
+  <text x="290" y="172" class="lbls">FTP</text>
+
+  <!-- LB -> nodes -->
+  <path d="M425 270 V318" class="line" marker-end="url(#arr)"/>
+  <path d="M620 270 V318" class="line" marker-end="url(#arr)"/>
+  <path d="M815 270 V318" class="line" marker-end="url(#arr)"/>
+  <text x="432" y="300" class="lbls">220?</text>
+  <text x="627" y="300" class="lbls">220?</text>
+  <text x="822" y="300" class="lbls">220?</text>
+
+  <!-- ================= Nodes ================= -->
+  <g filter="url(#sh)">
+    <rect x="340" y="320" width="170" height="122" rx="12" fill="#fff" stroke="#94a3b8" stroke-width="1.6"/>
+    <rect x="535" y="320" width="170" height="122" rx="12" fill="#fff" stroke="#16a34a" stroke-width="2.2"/>
+    <rect x="730" y="320" width="170" height="122" rx="12" fill="#fff" stroke="#94a3b8" stroke-width="1.6"/>
+  </g>
+  <text x="356" y="346" class="b">ftp-node-1</text>
+  <text x="356" y="366" class="lbls">vsftpd · pasv 21100–09</text>
+  <rect x="356" y="380" width="64" height="22" rx="11" fill="#dcfce7"/><text x="388" y="395" text-anchor="middle" font-size="11.5" font-weight="700" fill="#166534">READY</text>
+  <text x="356" y="428" class="lbls">gen 1</text>
+
+  <text x="551" y="346" class="b">ftp-node-2</text>
+  <text x="551" y="366" class="lbls">vsftpd · pasv 21110–19</text>
+  <rect x="551" y="378" width="138" height="24" rx="6" fill="#fef2f2" stroke="#fca5a5"/>
+  <text x="560" y="394" font-size="11.5" fill="#991b1b" text-decoration="line-through">gen 1</text>
+  <text x="598" y="394" font-size="11.5" font-weight="700" fill="#991b1b">DOWN · removed</text>
+  <rect x="551" y="408" width="138" height="24" rx="6" fill="#dcfce7" stroke="#86efac"/>
+  <text x="560" y="424" font-size="11.5" fill="#166534">gen 2</text>
+  <text x="598" y="424" font-size="11.5" font-weight="700" fill="#166534">READY · new</text>
+
+  <text x="746" y="346" class="b">ftp-node-3</text>
+  <text x="746" y="366" class="lbls">vsftpd · pasv 21120–29</text>
+  <rect x="746" y="380" width="64" height="22" rx="11" fill="#dcfce7"/><text x="778" y="395" text-anchor="middle" font-size="11.5" font-weight="700" fill="#166534">READY</text>
+  <text x="746" y="428" class="lbls">gen 1</text>
+
+  <!-- chaos -> node 2 -->
+  <path d="M280 470 H580 V444" class="lineR" marker-end="url(#arrR)"/>
+
+  <!-- nodes -> shared volume -->
+  <path d="M480 442 V508 M675 442 V508 M870 442 V508" class="line" stroke-width="2.6"/>
+  <text x="882" y="486" class="lbls">mount</text>
+  <text x="882" y="502" class="lbls">/srv/ftp</text>
+
+  <!-- ================= Shared volume ================= -->
+  <g filter="url(#sh)">
+    <path d="M340 518 v86 a280 18 0 0 0 560 0 v-86" fill="#e2e8f0" stroke="#64748b" stroke-width="1.8"/>
+    <ellipse cx="620" cy="518" rx="280" ry="18" fill="#f1f5f9" stroke="#64748b" stroke-width="1.8"/>
+  </g>
+  <text x="620" y="562" text-anchor="middle" font-size="17" font-weight="700" fill="#0f172a">ftp-storage · shared volume</text>
+  <text x="620" y="586" text-anchor="middle" class="lbls">every node sees the same files, so any node can serve any producer</text>
+  <text x="620" y="660" text-anchor="middle" class="m">/srv/ftp/&lt;producer&gt;/  to_distributor · archive · from_distributor · error</text>
+  <text x="620" y="680" text-anchor="middle" class="lbls">fresh = waiting in to_distributor · archived = processed · acks = TA1 / 997 back to the producer</text>
+
+  <!-- ================= Platform controller ================= -->
+  <g filter="url(#sh)">
+    <rect x="960" y="140" width="290" height="320" rx="14" fill="#fff" stroke="#0f172a" stroke-width="2"/>
+  </g>
+  <text x="980" y="172" class="t">Platform controller</text>
+  <text x="980" y="194" class="lbls">self-healing loop · Docker Engine API</text>
+  <g>
+    <circle cx="992" cy="224" r="11" fill="#0f172a"/><text x="992" y="228" text-anchor="middle" class="n">1</text>
+    <text x="1012" y="222" class="lbl">Probe every node's "220"</text>
+    <text x="1012" y="240" class="lbls">every 2 s · 1.5 s timeout</text>
+    <circle cx="992" cy="270" r="11" fill="#dc2626"/><text x="992" y="274" text-anchor="middle" class="n">2</text>
+    <text x="1012" y="268" class="lbl">3 failed probes → DOWN</text>
+    <text x="1012" y="286" class="lbls">publish platform.node.down</text>
+    <circle cx="992" cy="316" r="11" fill="#d97706"/><text x="992" y="320" text-anchor="middle" class="n">3</text>
+    <text x="1012" y="314" class="lbl">Remove + spawn replacement</text>
+    <text x="1012" y="332" class="lbls">same slot, image, volume, alias</text>
+    <circle cx="992" cy="362" r="11" fill="#16a34a"/><text x="992" y="366" text-anchor="middle" class="n">4</text>
+    <text x="1012" y="360" class="lbl">New node answers → READY</text>
+    <text x="1012" y="378" class="lbls">LB marks it UP · recovery time logged</text>
+  </g>
+  <line x1="980" y1="398" x2="1230" y2="398" stroke="#e2e8f0"/>
+  <text x="980" y="420" class="lbls">also: scans the volume per producer</text>
+  <text x="980" y="444" class="m">:9100 /metrics · /api/state · chaos</text>
+
+  <!-- controller -> nodes (probe / replace) -->
+  <path d="M960 380 H902" class="line" marker-end="url(#arr)"/>
+  <text x="908" y="372" class="lbls">probe</text>
+  <!-- controller -> volume (scan, read-only) -->
+  <path d="M960 440 H932 V560 H902" class="line" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+  <text x="903" y="610" class="lbls">scan</text>
+  <text x="905" y="626" class="lbls">(ro)</text>
+
+  <!-- ================= Prometheus ================= -->
+  <g filter="url(#sh)">
+    <rect x="960" y="510" width="290" height="190" rx="14" fill="#fff" stroke="#e6522c" stroke-width="2"/>
+  </g>
+  <text x="980" y="542" class="t">Prometheus</text>
+  <text x="1110" y="542" class="m">:9090</text>
+  <text x="980" y="566" class="lbls">scrapes every 5 s: HAProxy :8404,</text>
+  <text x="980" y="584" class="lbls">controller :9100, APIs, RabbitMQ</text>
+  <text x="980" y="610" class="lbl">alert rules</text>
+  <text x="980" y="630" class="m">FtpNodeDown · FtpClusterDegraded</text>
+  <text x="980" y="648" class="m">FtpClusterUnavailable</text>
+  <text x="980" y="666" class="m">FtpLoadBalancerBackendDown</text>
+  <text x="980" y="684" class="m">FtpInboxBacklog · StorageAlmostFull</text>
+  <path d="M1105 508 V462" class="lineO" marker-end="url(#arrO)"/>
+  <text x="1112" y="492" class="lbls" style="fill:#c2410c">scrape :9100 · alerts polled</text>
+
+  <!-- ================= RabbitMQ + Control Center ================= -->
+  <g filter="url(#sh)">
+    <rect x="1300" y="140" width="160" height="150" rx="14" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+    <rect x="1300" y="340" width="160" height="200" rx="14" fill="#14532d"/>
+  </g>
+  <text x="1316" y="170" class="b">RabbitMQ</text>
+  <text x="1316" y="194" class="m" font-size="11.5">platform.events</text>
+  <text x="1316" y="216" class="lbls">node.down</text>
+  <text x="1316" y="234" class="lbls">node.replacing</text>
+  <text x="1316" y="252" class="lbls">node.ready</text>
+  <text x="1316" y="270" class="lbls">alert.firing / resolved</text>
+
+  <text x="1316" y="368" font-size="15" font-weight="700" fill="#fff">EDI Control</text>
+  <text x="1316" y="386" font-size="15" font-weight="700" fill="#fff">Center</text>
+  <text x="1316" y="410" font-size="12.5" font-weight="700" fill="#bbf7d0">Platform →</text>
+  <text x="1316" y="430" font-size="12.5" fill="#bbf7d0">FTP Cluster: nodes,</text>
+  <text x="1316" y="448" font-size="12.5" fill="#bbf7d0">LB, traffic, alerts,</text>
+  <text x="1316" y="466" font-size="12.5" fill="#bbf7d0">recovery timeline</text>
+  <text x="1316" y="490" font-size="12.5" fill="#bbf7d0">Storage: files per</text>
+  <text x="1316" y="508" font-size="12.5" fill="#bbf7d0">producer, volume</text>
+  <text x="1316" y="526" font-size="12.5" fill="#bbf7d0">Notifications</text>
+
+  <path d="M1250 200 H1298" class="lineP" marker-end="url(#arrP)"/>
+  <path d="M1380 290 V338" class="lineP" marker-end="url(#arrP)"/>
+  <text x="1388" y="320" class="lbls">consume</text>
+  <!-- control center queries prometheus + controller -->
+  <path d="M1380 540 V600 H1252" class="line" marker-end="url(#arr)"/>
+  <text x="1262" y="624" class="lbls">PromQL · state · chaos</text>
+
+  <!-- ================= Timeline ================= -->
+  <g filter="url(#sh)">
+    <rect x="40" y="730" width="1420" height="150" rx="16" fill="#fff" stroke="#e2e8f0"/>
+  </g>
+  <text x="64" y="764" class="b">When ftp-node-2 freezes (npm run chaos:ftp -- --node 2)</text>
+  <text x="560" y="764" class="lbls">producers keep uploading through nodes 1 and 3 the whole time</text>
+  <line x1="110" y1="806" x2="1390" y2="806" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round"/>
+  <line x1="110" y1="806" x2="1180" y2="806" stroke="#fca5a5" stroke-width="4" stroke-linecap="round"/>
+  <line x1="1180" y1="806" x2="1390" y2="806" stroke="#86efac" stroke-width="4" stroke-linecap="round"/>
+  <g font-size="12.5">
+    <circle cx="110" cy="806" r="9" fill="#dc2626"/>
+    <text x="110" y="836" text-anchor="middle" font-weight="700" fill="#0f172a">+0 s</text>
+    <text x="110" y="856" text-anchor="middle" fill="#475569">node frozen</text>
+
+    <circle cx="370" cy="806" r="9" fill="#e6522c"/>
+    <text x="370" y="836" text-anchor="middle" font-weight="700" fill="#0f172a">+2–4 s</text>
+    <text x="370" y="856" text-anchor="middle" fill="#475569">LB check fails · stops routing to it</text>
+
+    <circle cx="630" cy="806" r="9" fill="#d97706"/>
+    <text x="630" y="836" text-anchor="middle" font-weight="700" fill="#0f172a">+4 s</text>
+    <text x="630" y="856" text-anchor="middle" fill="#475569">first failed probe · SUSPECT</text>
+
+    <circle cx="890" cy="806" r="9" fill="#0f172a"/>
+    <text x="890" y="836" text-anchor="middle" font-weight="700" fill="#0f172a">+10 s</text>
+    <text x="890" y="856" text-anchor="middle" fill="#475569">declared DOWN · alert · replacement spawned</text>
+
+    <circle cx="1180" cy="806" r="9" fill="#16a34a"/>
+    <text x="1180" y="836" text-anchor="middle" font-weight="700" fill="#0f172a">+13 s</text>
+    <text x="1180" y="856" text-anchor="middle" fill="#475569">gen 2 READY · LB UP · alert resolved</text>
+  </g>
+</svg>

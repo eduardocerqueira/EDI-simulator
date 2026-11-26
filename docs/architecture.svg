@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1640 1060" width="1640" height="1060" font-family="Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1640 1090" width="1640" height="1090" font-family="Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
   <title>EDI Simulator architecture</title>
-  <desc>Ten fictional farm producers send ANSI X12 832/846/856 over FTP to the Harvest Hub distributor, which validates, acknowledges (TA1/997), maps to JSON, ingests and delivers inventory over REST to the Harvest Market order app. RabbitMQ carries EDI notifications, order events and platform events. The FTP server is a highly available cluster: an HAProxy load balancer in front of three vsftpd nodes on one shared storage volume, healed by a platform controller and monitored by Prometheus.</desc>
+  <desc>Ten fictional farm producers send ANSI X12 832/846/856 over FTP to the Harvest Hub distributor, which validates, acknowledges (TA1/997), maps to JSON, ingests and delivers inventory over REST to the Harvest Market order app. RabbitMQ carries EDI notifications, order events and platform events. The FTP server is a highly available cluster: an HAProxy load balancer in front of three vsftpd nodes on one shared storage volume, healed by a platform controller and monitored by Prometheus; the EDI Control Center Platform area reads both.</desc>
   <defs>
     <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
@@ -26,7 +26,7 @@
   </defs>
 
   <!-- background -->
-  <rect width="1640" height="1060" rx="22" fill="#f8fafc"/>
+  <rect width="1640" height="1090" rx="22" fill="#f8fafc"/>
   <text x="40" y="58" font-size="28" font-weight="800" fill="#0f172a">EDI Simulator — architecture</text>
   <text x="40" y="86" class="s">ANSI X12 004010 B2B flow · all companies, people and data are fictional · everything runs locally with docker compose</text>
 
@@ -154,7 +154,7 @@
   <text x="782" y="576" font-size="15" font-weight="700" fill="#fff">EDI Control Center (React + shadcn/ui)</text>
   <text x="782" y="600" font-size="13" fill="#bbf7d0">envelope trace · X12 ⇄ JSON · validation · FTP transfers · deliveries</text>
   <text x="782" y="620" font-size="13" fill="#bbf7d0">notifications · inventory traceability · customers &amp; billing</text>
-  <text x="782" y="640" font-size="13" fill="#bbf7d0">reports · KPIs · X12 Inspector &amp; Reference</text>
+  <text x="782" y="640" font-size="13" fill="#bbf7d0">reports · KPIs · X12 Inspector · Platform: FTP cluster &amp; storage</text>
 
   <!-- ================= Order app ================= -->
   <g filter="url(#sh)">
@@ -259,9 +259,13 @@
   <path d="M400 686 V936 H412" class="lineP" marker-end="url(#arrP)"/>
   <circle cx="400" cy="712" r="11" fill="#7c3aed"/><text x="400" y="716" text-anchor="middle" class="n" font-size="11">12</text>
 
+  <!-- 13 control center -> prometheus + controller -->
+  <path d="M740 640 H706" class="line" marker-end="url(#arr)"/>
+  <circle cx="722" cy="620" r="11" fill="#0f172a"/><text x="722" y="624" text-anchor="middle" class="n" font-size="11">13</text>
+
   <!-- Legend -->
   <g transform="translate(40,500)">
-    <rect width="290" height="540" rx="16" fill="#fff" stroke="#e2e8f0"/>
+    <rect width="290" height="568" rx="16" fill="#fff" stroke="#e2e8f0"/>
     <text x="20" y="34" class="b">Flow</text>
     <g class="lbls">
       <text x="20" y="64"><tspan font-weight="700" fill="#0f172a">1</tspan>  Producer uploads X12 to its mailbox</text>
@@ -277,11 +281,12 @@
       <text x="20" y="334"><tspan font-weight="700" fill="#0f172a">10</tspan>  Controller probes + replaces nodes</text>
       <text x="20" y="362"><tspan font-weight="700" fill="#e6522c">11</tspan>  Prometheus scrapes + alerts</text>
       <text x="20" y="390"><tspan font-weight="700" fill="#7c3aed">12</tspan>  Platform events → platform.events</text>
+      <text x="20" y="418"><tspan font-weight="700" fill="#0f172a">13</tspan>  Platform area: PromQL + controller</text>
     </g>
-    <line x1="20" y1="418" x2="60" y2="418" class="line"/><text x="70" y="423" class="lbls">synchronous (FTP / HTTP)</text>
-    <line x1="20" y1="446" x2="60" y2="446" class="lineP"/><text x="70" y="451" class="lbls">asynchronous (RabbitMQ)</text>
-    <text x="20" y="484" class="b">Traceability</text>
-    <text x="20" y="506" class="lbls">product → movement → transaction set</text>
-    <text x="20" y="524" class="lbls">→ interchange → FTP file (+ timeline)</text>
+    <line x1="20" y1="446" x2="60" y2="446" class="line"/><text x="70" y="451" class="lbls">synchronous (FTP / HTTP)</text>
+    <line x1="20" y1="474" x2="60" y2="474" class="lineP"/><text x="70" y="479" class="lbls">asynchronous (RabbitMQ)</text>
+    <text x="20" y="512" class="b">Traceability</text>
+    <text x="20" y="534" class="lbls">product → movement → transaction set</text>
+    <text x="20" y="552" class="lbls">→ interchange → FTP file (+ timeline)</text>
   </g>
 </svg>

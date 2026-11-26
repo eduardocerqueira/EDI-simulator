@@ -59,6 +59,10 @@ Reset everything (databases, FTP mailboxes, queues): `docker compose down -v`.
 
 The FTP server is a **cluster** rather than a single container, so a producer can always deliver files even when an FTP node hangs or crashes.
 
+[![HA FTP platform: load balancer, 3 nodes on a shared volume, self-healing controller and Prometheus — click to open full size](docs/ha-platform.svg)](docs/ha-platform.svg)
+
+<sub>Click the diagram to open it full size. Source: [docs/ha-platform.svg](docs/ha-platform.svg).</sub>
+
 | Piece | What it does |
 |---|---|
 | **Load balancer** (`ftp`, HAProxy) | Keeps the service name and port `ftp:21`, so producers, the distributor and the simulator need no changes. Control connections are balanced across healthy nodes with an FTP-aware health check: a node must answer the `220` greeting. |
@@ -215,6 +219,7 @@ infra/
 docs/
   X12-PRIMER.md      how to read an X12 envelope, using this project's files
   architecture.svg   architecture diagram
+  ha-platform.svg    HA FTP platform + self-healing diagram
   demo/              demo videos (MP4) + inline previews (GIF)
 scripts/
   e2e.sh             end-to-end acceptance test (CI gate), incl. an FTP node failure
