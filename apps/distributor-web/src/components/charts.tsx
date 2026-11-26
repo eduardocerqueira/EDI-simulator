@@ -80,7 +80,7 @@ export function VBarChart({
         <ChartTooltip content={<ChartTooltipContent labelFormatter={xFormatter} valueFormatter={yFormatter ? (v) => yFormatter(Number(v)) : undefined} />} />
         {keys.length > 1 && <ChartLegend content={<ChartLegendContent />} />}
         {keys.map((k, i) => (
-          <Bar key={k} dataKey={k} stackId={stacked ? 'a' : undefined} fill={`var(--color-${k})`} radius={stacked ? (i === keys.length - 1 ? [4, 4, 0, 0] : 0) : 4} isAnimationActive={animate} />
+          <Bar key={k} dataKey={k} stackId={stacked ? 'a' : undefined} fill={`var(--color-${k})`} radius={0} isAnimationActive={animate} />
         ))}
       </BarChart>
     </ChartContainer>
@@ -114,7 +114,7 @@ export function HBarChart({
         <XAxis type="number" tickLine={false} axisLine={false} tickFormatter={valueFormatter} />
         <YAxis type="category" dataKey={labelKey} tickLine={false} axisLine={false} width={labelWidth} tick={{ fontSize: 11 }} />
         <ChartTooltip content={<ChartTooltipContent hideLabel={false} valueFormatter={valueFormatter ? (v) => valueFormatter(Number(v)) : undefined} />} />
-        <Bar dataKey={valueKey} fill={`var(--color-${valueKey})`} radius={4} />
+        <Bar dataKey={valueKey} fill={`var(--color-${valueKey})`} radius={0} />
       </BarChart>
     </ChartContainer>
   );
@@ -130,6 +130,7 @@ export function DonutChart({
   className,
   valueFormatter,
   center,
+  legend = true,
 }: {
   data: Array<Record<string, unknown>>;
   nameKey: string;
@@ -138,6 +139,8 @@ export function DonutChart({
   className?: string;
   valueFormatter?: (v: number) => string;
   center?: { value: string; label: string };
+  /** hide when the caller renders its own (e.g. clickable) legend */
+  legend?: boolean;
 }) {
   const total = data.reduce((n, d) => n + Number(d[valueKey] ?? 0), 0);
   if (!total) return <EmptyState title="No data in range" />;
@@ -160,15 +163,17 @@ export function DonutChart({
           <div className="text-muted-foreground text-xs">{center.label}</div>
         </div>
       )}
+      {legend && (
       <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs">
         {data.map((d, i) => (
           <span key={i} className="flex items-center gap-1.5">
-            <span className="size-2 rounded-[2px]" style={{ background: (colors ?? PIE_COLORS)[i % (colors ?? PIE_COLORS).length] }} />
+            <span className="size-2 rounded-none" style={{ background: (colors ?? PIE_COLORS)[i % (colors ?? PIE_COLORS).length] }} />
             <span className="text-muted-foreground">{String(d[nameKey])}</span>
             <span className="font-medium tabular-nums">{valueFormatter ? valueFormatter(Number(d[valueKey])) : Number(d[valueKey]).toLocaleString()}</span>
           </span>
         ))}
       </div>
+      )}
     </div>
   );
 }

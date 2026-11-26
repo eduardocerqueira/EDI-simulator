@@ -39,12 +39,17 @@ model TradingPartner {
   city         String?
   state        String?
   active       Boolean  @default(true)
+  contactName  String?
+  contactEmail String?
   createdAt    DateTime @default(now())
 
   products      Product[]
   files         FileTransfer[]
   interchanges  Interchange[]
   transactions  TransactionSet[]
+  actionItems   ActionItem[]
+  reports       ProducerReport[]
+  emails        EmailMessage[]
 }
 
 model FileTransfer {
@@ -116,6 +121,7 @@ model Interchange {
   events          ProcessingEvent[]
   acknowledgments Acknowledgment[]
   notifications   Notification[]
+  actionItem      ActionItem?
 
   @@index([senderId, controlNumber])
   @@index([receivedAt])
@@ -394,4 +400,115 @@ model OrderEventLog {
 model Sequence {
   name  String @id
   value Int
+}
+
+// ---------------------------------------------------------------------------
+// EDI failure backlog and producer communication
+// ---------------------------------------------------------------------------
+
+/** One backlog entry per failed inbound interchange (envelope, syntax or business rejection). */
+model ActionItem {
+  id               String    @id @default(cuid())
+  number           Int       @unique            // AI-000123 (from the Sequence table)
+  partnerId        String
+  partner          TradingPartner @relation(fields: [partnerId], references: [id])
+  interchangeId    String    @unique
+  interchange      Interchange @relation(fields: [interchangeId], references: [id], onDelete: Cascade)
+  kind             String    // INTERCHANGE_REJECTED | TRANSACTIONS_REJECTED | PROCESSING_ERROR
+  layer            String    // ENVELOPE | SYNTAX | BUSINESS | SYSTEM (worst layer found)
+  title            String
+  errorCodes       String[]
+  issueCount       Int       @default(0)
+  failedTransactions Int     @default(0)
+  priority         String    // HIGH | MEDIUM | LOW
+  status           String    @default("OPEN") // OPEN | IN_PROGRESS | REPORTED | PRODUCER_REPLIED | RESOLVED | DISMISSED
+  assignee         String?
+  note             String?
+  history          Json      @default("[]")   // [{ at, by, action, from?, to?, note? }]
+  occurredAt       DateTime                    // when the interchange arrived
+  reportedAt       DateTime?
+  repliedAt        DateTime?
+  resolvedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  reports ProducerReport[]
+
+  @@index([status, priority])
+  @@index([partnerId, status])
+  @@index([occurredAt])
+}
+
+/** A failure report generated for one producer (the snapshot that was e-mailed). */
+model ProducerReport {
+  id          String    @id @default(cuid())
+  number      Int       @unique            // RPT-000123
+  partnerId   String
+  partner     TradingPartner @relation(fields: [partnerId], references: [id])
+  filters     Json                          // what the admin selected when generating it
+  periodFrom  DateTime
+  periodTo    DateTime
+  summary     Json                          // totals, codes breakdown
+  csv         String                        // attachment content
+  createdBy   String
+  createdAt   DateTime  @default(now())
+
+  items  ActionItem[]
+  emails EmailMessage[]
+
+  @@index([partnerId, createdAt])
+}
+
+/** Outbound and inbound e-mail through the (simulated) Resend integration. */
+model EmailMessage {
+  id             String    @id @default(cuid())
+  provider       String    @default("resend")
+  providerId     String    @unique          // Resend email id
+  direction      String    // OUTBOUND | INBOUND
+  status         String    // queued | sent | delivered | opened | bounced | complained | failed | received | quarantined
+  fromAddr       String
+  to             String[]
+  cc             String[]
+  replyTo        String?
+  subject        String
+  text           String
+  html           String?
+  attachments    Json      @default("[]")  // [{ filename, contentType, size, content? }]
+  idempotencyKey String?   @unique
+  senderVerified Boolean   @default(true)  // inbound: sender is a known producer contact
+  partnerId      String?
+  partner        TradingPartner? @relation(fields: [partnerId], references: [id])
+  reportId       String?
+  report         ProducerReport? @relation(fields: [reportId], references: [id])
+  inReplyToId    String?
+  inReplyTo      EmailMessage?  @relation("EmailThread", fields: [inReplyToId], references: [id])
+  replies        EmailMessage[] @relation("EmailThread")
+  createdAt      DateTime  @default(now())
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  openedAt       DateTime?
+  bouncedAt      DateTime?
+  receivedAt     DateTime?
+
+  events EmailEvent[]
+
+  @@index([direction, createdAt])
+  @@index([partnerId, createdAt])
+}
+
+/** Every webhook delivery received from Resend (verified or not) — the integration audit log. */
+model EmailEvent {
+  id          String    @id @default(cuid())
+  svixId      String    @unique               // idempotency: Resend may deliver the same webhook twice
+  type        String                          // email.sent | email.delivered | email.opened | email.bounced | email.complained | email.received
+  emailId     String?
+  email       EmailMessage? @relation(fields: [emailId], references: [id], onDelete: SetNull)
+  providerEmailId String?
+  verified    Boolean
+  outcome     String                          // processed | duplicate | rejected | ignored
+  error       String?
+  payload     Json
+  receivedAt  DateTime  @default(now())
+
+  @@index([receivedAt])
 }

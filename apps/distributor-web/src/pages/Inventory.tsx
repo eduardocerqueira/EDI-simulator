@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { ArrowRight, Boxes, FileText, Mail, Package, ShoppingCart } from 'lucide-react';
+import { ArrowRight, Boxes, FileText, Mail, Package, ShoppingCart } from '@edi/ui/icons';
 import { Badge } from '@edi/ui/components/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@edi/ui/components/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@edi/ui/components/table';
@@ -118,18 +118,24 @@ interface ProductDetail extends Omit<ProductRow, 'partner'> {
   quantityReserved: number;
   createdAt: string;
   partner: { id: string; name: string; isaId: string; code: string };
-  movements: Array<{
-    id: string;
-    type: string;
-    quantityDelta: number;
-    quantityAfter: number;
-    unitCost: number | null;
-    note: string | null;
-    orderNumber: string | null;
-    createdAt: string;
-    transaction: { id: string; type: string; controlNumber: string; status: string; interchange: { id: string; controlNumber: string; receivedAt: string; fileTransfer: { fileName: string } } } | null;
-  }>;
+  /** last 100 points, newest first, for the chart */
+  movements: Array<{ createdAt: string; quantityAfter: number }>;
+  _count: { movements: number };
 }
+
+interface Movement {
+  id: string;
+  type: string;
+  quantityDelta: number;
+  quantityAfter: number;
+  unitCost: number | null;
+  note: string | null;
+  orderNumber: string | null;
+  createdAt: string;
+  transaction: { id: string; type: string; controlNumber: string; status: string; interchange: { id: string; controlNumber: string; receivedAt: string; fileTransfer: { fileName: string } } } | null;
+}
+
+const LEDGER_PAGE_SIZE = 25;
 
 const MOVE_STYLE: Record<string, { label: string; variant: 'info' | 'success' | 'warning' | 'muted' | 'destructive' }> = {
   CATALOG: { label: '832 catalog', variant: 'info' },
@@ -142,6 +148,15 @@ const MOVE_STYLE: Record<string, { label: string; variant: 'info' | 'success' | 
 export function ProductDetailPage() {
   const { id } = useParams();
   const q = useQuery({ queryKey: ['product', id], queryFn: () => api<ProductDetail>(`/inventory/${id}`), refetchInterval: 5000 });
+  const { values: f, page, set } = useUrlFilters({ type: '', source: '', q: '' });
+  const ledgerParams = { ...f, page, pageSize: LEDGER_PAGE_SIZE };
+  const ledger = useQuery({
+    queryKey: ['product', id, 'movements', ledgerParams],
+    queryFn: () => api<Page<Movement>>(`/inventory/${id}/movements${qs(ledgerParams)}`),
+    refetchInterval: 5000,
+    placeholderData: keepPreviousData,
+  });
+  const filtered = !!(f.type || f.source || f.q);
   if (q.isLoading) return <LoadingPage />;
   if (q.error) return <ErrorState error={q.error} />;
   const p = q.data!;
@@ -167,20 +182,38 @@ export function ProductDetailPage() {
       <Card className="mt-4 gap-2">
         <CardHeader>
           <CardTitle>Quantity history</CardTitle>
-          <CardDescription>Quantity after each movement</CardDescription>
+          <CardDescription>Quantity after each movement{p._count.movements > 100 ? ' (last 100 movements)' : ''}</CardDescription>
         </CardHeader>
         <CardContent>
           <VBarChart data={history} xKey="at" config={{ qty: { label: 'On hand', color: 'var(--chart-1)' } }} className="h-[200px]" />
         </CardContent>
       </Card>
-      <Card className="mt-4 gap-2">
-        <CardHeader>
-          <CardTitle>Movement ledger — traceability</CardTitle>
+      <Card className="mt-4 gap-0 py-0">
+        <CardHeader className="border-b py-4">
+          <CardTitle>
+            Movement ledger — traceability <span className="text-muted-foreground text-sm font-normal">· {fmt.num(p._count.movements)} movements</span>
+          </CardTitle>
           <CardDescription>Every quantity or price change, linked to the X12 transaction set and envelope (or order) that caused it</CardDescription>
         </CardHeader>
+        <FilterBar search={f.q} onSearch={(v) => set({ q: v })} placeholder="Order #, control number or note" onReset={filtered ? () => set({ type: '', source: '', q: '' }) : undefined}>
+          <NativeSelect value={f.type} onChange={(v) => set({ type: v })} placeholder="All movements" options={Object.entries(MOVE_STYLE).map(([value, m]) => ({ value, label: m.label }))} />
+          <NativeSelect
+            value={f.source}
+            onChange={(v) => set({ source: v })}
+            placeholder="Any source"
+            options={[
+              { value: 'edi', label: 'EDI (X12 transaction)' },
+              { value: 'order', label: 'Customer order' },
+            ]}
+          />
+        </FilterBar>
         <CardContent className="px-3">
-          {p.movements.length === 0 ? (
-            <EmptyState title="No movements" />
+          {ledger.isLoading ? (
+            <LoadingRows />
+          ) : ledger.error ? (
+            <ErrorState error={ledger.error} />
+          ) : ledger.data!.items.length === 0 ? (
+            <EmptyState title={filtered ? 'No movements match these filters' : 'No movements'} />
           ) : (
             <Table>
               <TableHeader>
@@ -195,7 +228,7 @@ export function ProductDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {p.movements.map((m) => {
+                {ledger.data!.items.map((m) => {
                   const s = MOVE_STYLE[m.type] ?? { label: m.type, variant: 'muted' as const };
                   return (
                     <TableRow key={m.id}>
@@ -234,6 +267,7 @@ export function ProductDetailPage() {
             </Table>
           )}
         </CardContent>
+        {ledger.data && ledger.data.total > 0 && <Pagination page={page} pageSize={LEDGER_PAGE_SIZE} total={ledger.data.total} onPage={(n) => set({ page: n })} />}
       </Card>
       <Card className="mt-4 py-4">
         <CardContent className="px-4">

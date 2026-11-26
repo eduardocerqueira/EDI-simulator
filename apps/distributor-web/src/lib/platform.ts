@@ -10,11 +10,12 @@ export function usePlatformOverview(refetchInterval = 2000) {
   });
 }
 
-export function usePlatformTimeseries(minutes: number, refetchInterval = 5000) {
+export function usePlatformTimeseries(minutes: number, refetchInterval = 5000, enabled = true) {
   return useQuery({
     queryKey: ['platform', 'timeseries', minutes],
     queryFn: () => api<PlatformTimeseries>(`/platform/timeseries?minutes=${minutes}`),
     refetchInterval,
+    enabled,
   });
 }
 

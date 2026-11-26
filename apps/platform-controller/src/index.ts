@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import { alertState, pollAlerts } from './alerts.js';
 import { bus } from './bus.js';
-import { clusterState, initCluster, injectChaos, reconcile } from './cluster.js';
+import { clusterState, initCluster, injectChaos, queryEvents, reconcile, type EventQuery } from './cluster.js';
 import { config } from './config.js';
 import { docker } from './docker.js';
 import { registry } from './metrics.js';
@@ -44,6 +44,7 @@ async function main() {
   });
   app.get('/api/state', async () => ({ ...clusterState(), storage: storageSnapshot(), prometheus: alertState() }));
   app.get('/api/storage', async () => storageSnapshot());
+  app.get('/api/events', async (req) => queryEvents(req.query as EventQuery));
   app.post('/api/chaos', async (req, reply) => {
     const { slot, mode } = (req.body ?? {}) as { slot?: number; mode?: 'pause' | 'kill' };
     try {

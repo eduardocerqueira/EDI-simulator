@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { Building2, CircleDollarSign, Mail, Receipt, ShoppingCart, Users } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@edi/ui/components/avatar';
+import { Building2, CircleDollarSign, Mail, Receipt, ShoppingCart, Users } from '@edi/ui/icons';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@edi/ui/components/card';
+import { Input } from '@edi/ui/components/input';
 import { Drawer, DrawerBody, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@edi/ui/components/drawer';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@edi/ui/components/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@edi/ui/components/tabs';
@@ -13,6 +13,7 @@ import { fmt } from '@/lib/format';
 import { useUrlFilters } from '@/lib/hooks';
 import { EmptyState, ErrorState, LiveDot, LoadingPage, LoadingRows, NativeSelect, PageHeader, Pagination, StatCard, StatusBadge } from '@/components/common';
 import { FilterBar } from '@/components/FilterBar';
+import { BrandLogo } from '@/components/BrandLogo';
 
 interface OrderItem {
   upc: string;
@@ -50,7 +51,46 @@ interface Bill {
   customer?: { id: string; name: string; company: string | null };
 }
 
-const initials = (s: string) => s.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+interface CustomerRef {
+  id: string;
+  name: string;
+  company: string | null;
+}
+
+const customerLabel = (c?: { name: string; company: string | null } | null) => c?.company ?? c?.name ?? '';
+
+function useCustomerOptions() {
+  const q = useQuery({ queryKey: ['customers-lite'], queryFn: () => api<CustomerRef[]>('/customers?lite=1'), staleTime: 60_000 });
+  return (q.data ?? []).map((c) => ({ value: c.id, label: c.company ? `${c.company} (${c.name})` : c.name }));
+}
+
+const DAYS_OPTIONS = [
+  { value: '1', label: 'Last 24 hours' },
+  { value: '7', label: 'Last 7 days' },
+  { value: '30', label: 'Last 30 days' },
+  { value: '90', label: 'Last 90 days' },
+];
+
+/** Min/max money inputs bound to two URL filters. */
+function MoneyRange({ label, min, max, onMin, onMax }: { label: string; min: string; max: string; onMin: (v: string) => void; onMax: (v: string) => void }) {
+  return (
+    <div className="flex items-center gap-1" role="group" aria-label={label}>
+      <Input type="number" inputMode="decimal" min={0} step="any" className="w-36" placeholder={`Min ${label.toLowerCase()}`} aria-label={`Minimum ${label.toLowerCase()}`} value={min} onChange={(e) => onMin(e.target.value)} />
+      <span className="text-muted-foreground text-xs">–</span>
+      <Input type="number" inputMode="decimal" min={0} step="any" className="w-36" placeholder={`Max ${label.toLowerCase()}`} aria-label={`Maximum ${label.toLowerCase()}`} value={max} onChange={(e) => onMax(e.target.value)} />
+    </div>
+  );
+}
+
+function CustomerCell({ customer, fallbackId }: { customer?: CustomerRef; fallbackId: string }) {
+  const label = customerLabel(customer);
+  return (
+    <Link className="inline-flex items-center gap-2 hover:underline" to={`/customers/${customer?.id ?? fallbackId}`} onClick={(e) => e.stopPropagation()}>
+      {label && <BrandLogo name={label} kind="customer" size="xs" />}
+      {label}
+    </Link>
+  );
+}
 
 function dueLabel(b: Bill) {
   if (b.status !== 'OPEN') return null;
@@ -97,7 +137,7 @@ export function CustomersPage() {
                 <TableRow key={c.id} className="cursor-pointer" onClick={() => nav(`/customers/${c.id}`)}>
                   <TableCell className="pl-4">
                     <div className="flex items-center gap-3">
-                      <Avatar><AvatarFallback className="bg-primary/10 text-primary">{initials(c.company ?? c.name)}</AvatarFallback></Avatar>
+                      <BrandLogo name={c.company ?? c.name} kind="customer" size="md" />
                       <div>
                         <div className="font-medium">{c.company ?? c.name}</div>
                         <div className="text-muted-foreground text-xs">{c.name}</div>
@@ -171,8 +211,8 @@ function OrderDrawer({ order, onClose }: { order: Order | null; onClose: () => v
   );
 }
 
-function OrdersTable({ orders, onOpen, showCustomer = true }: { orders: Order[]; onOpen: (o: Order) => void; showCustomer?: boolean }) {
-  if (!orders.length) return <EmptyState icon={ShoppingCart} title="No orders" />;
+function OrdersTable({ orders, onOpen, showCustomer = true, emptyTitle = 'No orders' }: { orders: Order[]; onOpen: (o: Order) => void; showCustomer?: boolean; emptyTitle?: string }) {
+  if (!orders.length) return <EmptyState icon={ShoppingCart} title={emptyTitle} />;
   return (
     <Table>
       <TableHeader>
@@ -193,7 +233,7 @@ function OrdersTable({ orders, onOpen, showCustomer = true }: { orders: Order[];
             <TableCell className="pl-4 font-mono text-xs font-medium">{o.orderNumber}</TableCell>
             {showCustomer && (
               <TableCell>
-                <Link className="hover:underline" to={`/customers/${o.customer?.id ?? o.customerId}`} onClick={(e) => e.stopPropagation()}>{o.customer?.company ?? o.customer?.name}</Link>
+                <CustomerCell customer={o.customer} fallbackId={o.customerId} />
               </TableCell>
             )}
             <TableCell className="text-right tabular-nums">{o.items.length}</TableCell>
@@ -209,8 +249,8 @@ function OrdersTable({ orders, onOpen, showCustomer = true }: { orders: Order[];
   );
 }
 
-function BillsTable({ bills, showCustomer = true }: { bills: Bill[]; showCustomer?: boolean }) {
-  if (!bills.length) return <EmptyState icon={Receipt} title="No bills" />;
+function BillsTable({ bills, showCustomer = true, emptyTitle = 'No bills' }: { bills: Bill[]; showCustomer?: boolean; emptyTitle?: string }) {
+  if (!bills.length) return <EmptyState icon={Receipt} title={emptyTitle} />;
   return (
     <Table>
       <TableHeader>
@@ -230,7 +270,7 @@ function BillsTable({ bills, showCustomer = true }: { bills: Bill[]; showCustome
             <TableCell className="pl-4 font-mono text-xs font-medium">{b.billNumber}</TableCell>
             {showCustomer && (
               <TableCell>
-                <Link className="hover:underline" to={`/customers/${b.customerId}`}>{b.customer?.company ?? b.customer?.name}</Link>
+                <CustomerCell customer={b.customer} fallbackId={b.customerId} />
               </TableCell>
             )}
             <TableCell className="text-right font-medium tabular-nums">{fmt.money(b.amount)}</TableCell>
@@ -267,7 +307,7 @@ export function CustomerDetailPage() {
         back={{ to: '/customers', label: 'Customers' }}
         title={
           <span className="flex items-center gap-3">
-            <Avatar className="size-10"><AvatarFallback className="bg-primary/10 text-primary">{initials(c.company ?? c.name)}</AvatarFallback></Avatar>
+            <BrandLogo name={c.company ?? c.name} kind="customer" size="lg" />
             {c.company ?? c.name}
           </span>
         }
@@ -300,8 +340,11 @@ export function CustomerDetailPage() {
   );
 }
 
+const ORDER_FILTERS = { q: '', status: '', customerId: '', days: '', minTotal: '', maxTotal: '', sort: '' };
+
 export function OrdersPage() {
-  const { values: f, page, set } = useUrlFilters({ q: '', status: '' });
+  const { values: f, page, set } = useUrlFilters(ORDER_FILTERS);
+  const customers = useCustomerOptions();
   const [open, setOpen] = useState<Order | null>(null);
   const q = useQuery({
     queryKey: ['orders', f, page],
@@ -309,14 +352,34 @@ export function OrdersPage() {
     refetchInterval: 5000,
     placeholderData: keepPreviousData,
   });
+  const filtered = !!(f.q || f.status || f.customerId || f.days || f.minTotal || f.maxTotal);
   return (
     <>
       <PageHeader title="Orders" description="Customer orders placed in the Harvest Market order app. Each order.created event decrements distributor stock; order.cancelled puts it back." actions={<LiveDot />} />
       <Card className="gap-0 py-0">
-        <FilterBar search={f.q} onSearch={(v) => set({ q: v })} placeholder="Order number" onReset={() => set({ q: '', status: '' })}>
+        <FilterBar search={f.q} onSearch={(v) => set({ q: v })} placeholder="Order #, customer, UPC or SKU" onReset={filtered || f.sort ? () => set(ORDER_FILTERS) : undefined}>
           <NativeSelect value={f.status} onChange={(v) => set({ status: v })} placeholder="All statuses" options={[{ value: 'PLACED', label: 'Placed' }, { value: 'CANCELLED', label: 'Cancelled' }]} />
+          <NativeSelect value={f.customerId} onChange={(v) => set({ customerId: v })} placeholder="All customers" options={customers} className="max-w-56" />
+          <NativeSelect value={f.days} onChange={(v) => set({ days: v })} placeholder="Any time" options={DAYS_OPTIONS} />
+          <MoneyRange label="Total" min={f.minTotal} max={f.maxTotal} onMin={(v) => set({ minTotal: v })} onMax={(v) => set({ maxTotal: v })} />
+          <NativeSelect
+            value={f.sort}
+            onChange={(v) => set({ sort: v })}
+            placeholder="Newest first"
+            options={[
+              { value: 'oldest', label: 'Oldest first' },
+              { value: 'total_desc', label: 'Total: high → low' },
+              { value: 'total_asc', label: 'Total: low → high' },
+            ]}
+          />
         </FilterBar>
-        {q.isLoading ? <LoadingRows /> : q.error ? <div className="p-4"><ErrorState error={q.error} /></div> : <OrdersTable orders={q.data!.items} onOpen={setOpen} />}
+        {q.isLoading ? (
+          <LoadingRows />
+        ) : q.error ? (
+          <div className="p-4"><ErrorState error={q.error} /></div>
+        ) : (
+          <OrdersTable orders={q.data!.items} onOpen={setOpen} emptyTitle={filtered ? 'No orders match these filters' : 'No orders'} />
+        )}
         {q.data && <Pagination page={q.data.page} pageSize={q.data.pageSize} total={q.data.total} onPage={(p) => set({ page: p })} />}
       </Card>
       <OrderDrawer order={open} onClose={() => setOpen(null)} />
@@ -324,14 +387,20 @@ export function OrdersPage() {
   );
 }
 
+// the status tabs are their own control; the filter bar's Reset clears everything else
+const BILL_BAR_FILTERS = { q: '', customerId: '', days: '', due: '', minAmount: '', maxAmount: '', sort: '' };
+const BILL_FILTERS = { status: '', ...BILL_BAR_FILTERS };
+
 export function BillsPage() {
-  const { values: f, page, set } = useUrlFilters({ status: '' });
+  const { values: f, page, set } = useUrlFilters(BILL_FILTERS);
+  const customers = useCustomerOptions();
   const q = useQuery({
     queryKey: ['bills', f, page],
     queryFn: () => api<Page<Bill>>(`/bills${qs({ ...f, page, pageSize: 25 })}`),
     refetchInterval: 5000,
     placeholderData: keepPreviousData,
   });
+  const barFiltered = !!(f.q || f.customerId || f.days || f.due || f.minAmount || f.maxAmount);
   return (
     <>
       <PageHeader title="Billing" description="Bills are created with every order and are due 30 days after the order date (net 30). Open bills past their due date are overdue." actions={<LiveDot />} />
@@ -345,10 +414,41 @@ export function BillsPage() {
         </TabsList>
       </Tabs>
       <Card className="gap-0 py-0">
-        {q.isLoading ? <LoadingRows /> : q.error ? <div className="p-4"><ErrorState error={q.error} /></div> : <BillsTable bills={q.data!.items} />}
+        <FilterBar search={f.q} onSearch={(v) => set({ q: v })} placeholder="Bill #, order #, customer" onReset={barFiltered || f.sort ? () => set(BILL_BAR_FILTERS) : undefined}>
+          <NativeSelect value={f.customerId} onChange={(v) => set({ customerId: v })} placeholder="All customers" options={customers} className="max-w-56" />
+          <NativeSelect value={f.days} onChange={(v) => set({ days: v })} placeholder="Issued any time" options={DAYS_OPTIONS.map((o) => ({ ...o, label: `Issued ${o.label.toLowerCase()}` }))} />
+          <NativeSelect
+            value={f.due}
+            onChange={(v) => set({ due: v })}
+            placeholder="Any due date"
+            options={[
+              { value: 'overdue', label: 'Overdue' },
+              { value: '7d', label: 'Due in 7 days' },
+              { value: '30d', label: 'Due in 30 days' },
+            ]}
+          />
+          <MoneyRange label="Amount" min={f.minAmount} max={f.maxAmount} onMin={(v) => set({ minAmount: v })} onMax={(v) => set({ maxAmount: v })} />
+          <NativeSelect
+            value={f.sort}
+            onChange={(v) => set({ sort: v })}
+            placeholder="Newest issued"
+            options={[
+              { value: 'oldest', label: 'Oldest issued' },
+              { value: 'due_asc', label: 'Due date: soonest' },
+              { value: 'amount_desc', label: 'Amount: high → low' },
+              { value: 'amount_asc', label: 'Amount: low → high' },
+            ]}
+          />
+        </FilterBar>
+        {q.isLoading ? (
+          <LoadingRows />
+        ) : q.error ? (
+          <div className="p-4"><ErrorState error={q.error} /></div>
+        ) : (
+          <BillsTable bills={q.data!.items} emptyTitle={barFiltered || f.status ? 'No bills match these filters' : 'No bills'} />
+        )}
         {q.data && <Pagination page={q.data.page} pageSize={q.data.pageSize} total={q.data.total} onPage={(p) => set({ page: p })} />}
       </Card>
     </>
   );
 }
-

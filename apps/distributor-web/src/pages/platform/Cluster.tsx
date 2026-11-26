@@ -1,31 +1,40 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import {
-  Activity, AlertTriangle, ArrowRight, BellRing, Database, ExternalLink, HardDrive, Network, RefreshCcw, Server, ServerCrash, Timer, Zap,
-} from 'lucide-react';
+  Activity,
+  ArrowRight,
+  BellRing,
+  ChartLine,
+  Database,
+  ExternalLink,
+  HardDrive,
+  Network,
+  Radar,
+  RefreshCcw,
+  Server,
+  ServerCrash,
+  Timer,
+} from '@edi/ui/icons';
 import { Badge } from '@edi/ui/components/badge';
-import { Button } from '@edi/ui/components/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@edi/ui/components/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@edi/ui/components/tabs';
 import type { ChartConfig } from '@edi/ui/components/chart';
 import { cn } from '@edi/ui/lib/utils';
-import { EmptyState, ErrorState, LiveDot, LoadingPage, NativeSelect, PageHeader, RangeSelect, StatCard } from '@/components/common';
-import { ChaosDrawer } from '@/components/platform/ChaosDrawer';
-import { EventTimeline } from '@/components/platform/EventTimeline';
+import { EmptyState, ErrorState, RangeSelect, StatCard } from '@/components/common';
+import { PlatformEventsPanel } from '@/components/platform/PlatformEventsPanel';
+import { PlatformNotificationsPanel } from '@/components/platform/PlatformNotificationsPanel';
 import { NodeCard } from '@/components/platform/NodeCard';
 import { TimeChart } from '@/components/platform/TimeChart';
-import { api } from '@/lib/api';
 import { fmt } from '@/lib/format';
-import { bytes, nodeColor, rate, toneDot, usePlatformOverview, usePlatformTimeseries } from '@/lib/platform';
-import type { PlatformNode, PlatformOverview } from '@/lib/types';
-
-const SEV_VARIANT: Record<string, 'destructive' | 'warning' | 'info'> = { ERROR: 'destructive', WARNING: 'warning', INFO: 'info' };
+import { bytes, nodeColor, rate, usePlatformTimeseries } from '@/lib/platform';
+import type { PlatformOverview } from '@/lib/types';
+import { CountBadge, usePlatformContext } from './Platform';
 
 function ArchitectureStrip() {
   const step = (icon: typeof Server, title: string, sub: string) => {
     const Icon = icon;
     return (
-      <div className="bg-background/60 flex min-w-0 flex-1 items-center gap-2.5 rounded-lg border px-3 py-2">
+      <div className="bg-background/60 flex min-w-0 flex-1 items-center gap-2.5 rounded-none border px-3 py-2">
         <Icon className="text-primary size-4 shrink-0" />
         <div className="min-w-0">
           <div className="truncate text-sm font-medium">{title}</div>
@@ -36,7 +45,7 @@ function ArchitectureStrip() {
   };
   const arrow = <ArrowRight className="text-muted-foreground hidden size-4 shrink-0 md:block" />;
   return (
-    <div className="bg-muted/40 mb-6 flex flex-col gap-2 rounded-xl border p-3 md:flex-row md:items-center">
+    <div className="bg-muted/40 flex flex-col gap-2 rounded-none border p-3 md:flex-row md:items-center">
       {step(Network, 'HAProxy load balancer', 'service "ftp" · :21 + passive ranges')}
       {arrow}
       {step(Server, '3 FTP nodes (vsftpd)', 'one passive range per node')}
@@ -115,19 +124,30 @@ function KpiStrip({ data }: { data: PlatformOverview }) {
   );
 }
 
-const nodeConfig = (keys: string[]): ChartConfig =>
-  Object.fromEntries(keys.map((k) => [k, { label: k, color: nodeColor(Number(k.replace(/\D/g, '')) || 1) }]));
+const nodeConfig = (keys: string[]): ChartConfig => Object.fromEntries(keys.map((k) => [k, { label: k, color: nodeColor(Number(k.replace(/\D/g, '')) || 1) }]));
 
-function Charts({ nodeNames }: { nodeNames: string[] }) {
-  const [minutes, setMinutes] = useState(15);
+function Charts({ nodeNames, minutes, setMinutes }: { nodeNames: string[]; minutes: number; setMinutes: (m: number) => void }) {
   const ts = usePlatformTimeseries(minutes);
   const cfg = useMemo(() => nodeConfig(nodeNames), [nodeNames]);
-  const clusterCfg = { ready: { label: 'Ready', color: 'var(--chart-1)' }, desired: { label: 'Desired', color: 'var(--muted-foreground)' } } satisfies ChartConfig;
+  const clusterCfg = {
+    ready: { label: 'Ready', color: 'var(--chart-1)' },
+    desired: { label: 'Desired', color: 'var(--muted-foreground)' },
+  } satisfies ChartConfig;
   return (
-    <div className="mb-6">
+    <div>
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">Cluster metrics <span className="text-muted-foreground text-xs font-normal">· from Prometheus</span></h2>
-        <RangeSelect value={minutes} onChange={setMinutes} options={[[15, '15m'], [60, '1h'], [360, '6h']]} />
+        <h2 className="text-base font-semibold">
+          Cluster metrics <span className="text-muted-foreground text-xs font-normal">· from Prometheus</span>
+        </h2>
+        <RangeSelect
+          value={minutes}
+          onChange={setMinutes}
+          options={[
+            [15, '15m'],
+            [60, '1h'],
+            [360, '6h'],
+          ]}
+        />
       </div>
       {ts.error ? (
         <ErrorState error={ts.error} />
@@ -175,32 +195,44 @@ function Charts({ nodeNames }: { nodeNames: string[] }) {
   );
 }
 
-function PrometheusCard({ data }: { data: PlatformOverview['prometheus'] }) {
+function AlertsCard({ data }: { data: PlatformOverview['prometheus'] }) {
   const alerts = [...data.alerts].sort((a, b) => (a.state === b.state ? 0 : a.state === 'firing' ? -1 : 1));
   return (
     <Card className="gap-3">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Activity className="size-4" /> Prometheus
-          <a href={`${data.url}/alerts`} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground ml-auto inline-flex items-center gap-1 text-xs font-normal">
-            alerts <ExternalLink className="size-3" />
+          <BellRing className="size-4" /> Prometheus alerts
+          <a
+            href={`${data.url}/alerts`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-muted-foreground hover:text-foreground ml-auto inline-flex items-center gap-1 text-xs font-normal"
+          >
+            open in Prometheus <ExternalLink className="size-3" />
           </a>
         </CardTitle>
-        <CardDescription>Alert rules evaluated every 5s (infra/prometheus/alerts.yml)</CardDescription>
+        <CardDescription>
+          Alert rules evaluated every 5s (infra/prometheus/alerts.yml) · firing and resolved alerts also become platform notifications
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent>
         {!data.reachable ? (
           <ErrorState error={new Error('Prometheus unreachable')} />
         ) : alerts.length === 0 ? (
-          <div className="bg-success/10 text-success flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium">
-            <span className="bg-success size-2 rounded-full" /> All clear — no active alerts
+          <div className="bg-success/10 text-success flex items-center gap-2 rounded-none px-3 py-2.5 text-sm font-medium">
+            <span className="bg-success size-2 rounded-none" /> All clear — no active alerts
           </div>
         ) : (
           <ul className="space-y-2">
             {alerts.map((a, i) => (
-              <li key={i} className={cn('rounded-lg border p-3', a.state === 'firing' ? 'border-destructive/40 bg-destructive/5' : 'border-warning/40 bg-warning/5')}>
+              <li
+                key={i}
+                className={cn('rounded-none border p-3', a.state === 'firing' ? 'border-destructive/40 bg-destructive/5' : 'border-warning/40 bg-warning/5')}
+              >
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={a.state === 'firing' ? 'destructive' : 'warning'} className="uppercase">{a.state}</Badge>
+                  <Badge variant={a.state === 'firing' ? 'destructive' : 'warning'} className="uppercase">
+                    {a.state}
+                  </Badge>
                   <span className="font-mono text-sm font-medium">{a.name}</span>
                   {a.severity && <Badge variant="outline">{a.severity}</Badge>}
                   <span className="text-muted-foreground ml-auto text-xs">{fmt.ago(a.since)}</span>
@@ -210,186 +242,162 @@ function PrometheusCard({ data }: { data: PlatformOverview['prometheus'] }) {
             ))}
           </ul>
         )}
-        <div>
-          <div className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">Scrape targets</div>
-          <div className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-            {data.targets.map((t) => (
-              <div key={`${t.job}-${t.instance}`} className="flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs" title={t.lastError || `last scrape ${fmt.dateTime(t.lastScrape)}`}>
-                <span className={cn('size-2 shrink-0 rounded-full', t.health === 'up' ? 'bg-success' : t.health === 'down' ? 'bg-destructive' : 'bg-muted-foreground')} />
-                <span className="shrink-0 font-medium whitespace-nowrap">{t.job}</span>
-                <span className="text-muted-foreground ml-auto min-w-0 truncate font-mono">{t.instance}</span>
-              </div>
-            ))}
-            {data.targets.length === 0 && <span className="text-muted-foreground text-xs">No targets reported</span>}
-          </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TargetsCard({ data }: { data: PlatformOverview['prometheus'] }) {
+  const up = data.targets.filter((t) => t.health === 'up').length;
+  return (
+    <Card className="gap-3">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Activity className="size-4" /> Scrape targets
+          {data.targets.length > 0 && (
+            <Badge variant={up === data.targets.length ? 'success' : 'warning'} className="ml-auto">
+              {up} / {data.targets.length} up
+            </Badge>
+          )}
+        </CardTitle>
+        <CardDescription>What Prometheus scrapes every 5s (infra/prometheus/prometheus.yml)</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-1.5">
+          {data.targets.map((t) => (
+            <div
+              key={`${t.job}-${t.instance}`}
+              className="flex items-center gap-2 rounded-none border px-2.5 py-1.5 text-xs"
+              title={t.lastError || `last scrape ${fmt.dateTime(t.lastScrape)}`}
+            >
+              <span
+                className={cn(
+                  'size-2 shrink-0 rounded-none',
+                  t.health === 'up' ? 'bg-success' : t.health === 'down' ? 'bg-destructive' : 'bg-muted-foreground',
+                )}
+              />
+              <span className="shrink-0 font-medium whitespace-nowrap">{t.job}</span>
+              <span className="text-muted-foreground ml-auto min-w-0 truncate font-mono">{t.instance}</span>
+            </div>
+          ))}
+          {data.targets.length === 0 && <span className="text-muted-foreground text-xs">No targets reported</span>}
         </div>
       </CardContent>
     </Card>
   );
 }
 
-function NotificationsCard({ data }: { data: PlatformOverview['notifications'] }) {
-  const qc = useQueryClient();
-  const markRead = useMutation({
-    mutationFn: (id: string) => api(`/notifications/${id}/read`, { method: 'POST' }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['platform'] });
-      qc.invalidateQueries({ queryKey: ['notifications'] });
-    },
-  });
-  return (
-    <Card className="gap-3">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <BellRing className="size-4" /> Platform notifications
-          {data.unread > 0 && <Badge variant="destructive">{data.unread} unread</Badge>}
-          <Button asChild variant="ghost" size="sm" className="ml-auto">
-            <Link to="/notifications?tab=platform">View all</Link>
-          </Button>
-        </CardTitle>
-        <CardDescription>Delivered by RabbitMQ (platform.events → distributor.platform)</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {data.items.length === 0 ? (
-          <EmptyState icon={BellRing} title="No platform notifications" description="Node failures, recoveries, chaos tests and Prometheus alerts show up here." />
-        ) : (
-          <ul className="max-h-[420px] divide-y overflow-y-auto overscroll-contain">
-            {data.items.map((n) => (
-              <li key={n.id} className={cn('flex gap-3 py-2.5', !n.read && 'bg-primary/[0.03]')}>
-                <span className={cn('mt-1.5 size-2 shrink-0 rounded-full', toneDot[SEV_VARIANT[n.severity] ?? 'muted'])} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-sm font-medium">{n.title}</span>
-                    <span className="text-muted-foreground ml-auto shrink-0 text-xs">{fmt.ago(n.createdAt)}</span>
-                  </div>
-                  <p className="text-muted-foreground line-clamp-2 text-xs">{n.message}</p>
-                  <div className="mt-1 flex items-center gap-2">
-                    <Badge variant="outline" className="font-mono text-[10px]">{n.type}</Badge>
-                    {!n.read && (
-                      <button className="text-primary cursor-pointer text-xs hover:underline" onClick={() => markRead.mutate(n.id)}>
-                        Mark read
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
+const TABS = ['nodes', 'metrics', 'timeline', 'alerts', 'notifications'] as const;
+type Tab = (typeof TABS)[number];
 
-export function ClusterPage() {
-  const q = usePlatformOverview(2000);
-  const [chaosOpen, setChaosOpen] = useState(false);
-  const [chaosNode, setChaosNode] = useState<PlatformNode | undefined>();
-  const [eventNode, setEventNode] = useState('');
+export function ClusterSection() {
+  const { data, openChaos } = usePlatformContext();
+  const [params, setParams] = useSearchParams();
+  const [minutes, setMinutes] = useState(15);
 
-  if (q.isLoading) return <LoadingPage />;
-  if (q.error) return <ErrorState error={q.error} />;
-  const data = q.data!;
+  const tab: Tab = (TABS as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'nodes';
+  const setTab = (t: string) =>
+    setParams(
+      () => {
+        // each tab has its own filters and paging, so start clean when switching
+        const next = new URLSearchParams();
+        if (t !== 'nodes') next.set('tab', t);
+        return next;
+      },
+      { replace: true },
+    );
+
   const c = data.controller.reachable ? data.controller : undefined;
   const nodes = c?.nodes ?? [];
   const nodeNames = nodes.map((n) => n.name);
-  const events = (c?.events ?? []).filter((e) => !eventNode || e.node === eventNode);
-  const openChaos = (node?: PlatformNode) => {
-    setChaosNode(node);
-    setChaosOpen(true);
-  };
+  const firing = data.prometheus.alerts.filter((a) => a.state === 'firing').length;
+  const pending = data.prometheus.alerts.filter((a) => a.state === 'pending').length;
+  const unhealthy = nodes.filter((n) => n.status !== 'READY').length;
 
   return (
     <>
-      <PageHeader
-        title="FTP Cluster"
-        description={
-          <>
-            Producers connect to <code className="font-mono">ftp:21</code>, an HAProxy load balancer in front of three vsftpd nodes. Each node owns a
-            passive port range so data connections return to the right node, and all nodes mount the same storage volume. The platform controller
-            probes every node and replaces any that stop answering; Prometheus scrapes the load balancer and the controller and evaluates the alert rules.
-          </>
-        }
-        actions={
-          <>
-            <LiveDot label="Live · 2s" />
-            <Button asChild variant="outline" size="sm">
-              <a href="http://localhost:8404" target="_blank" rel="noreferrer">
-                HAProxy stats <ExternalLink />
-              </a>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <a href="http://localhost:9090/alerts" target="_blank" rel="noreferrer">
-                Prometheus <ExternalLink />
-              </a>
-            </Button>
-            <Button variant="destructive" size="sm" onClick={() => openChaos(undefined)} disabled={!c}>
-              <Zap /> Simulate failure on a random node
-            </Button>
-          </>
-        }
-      />
-      <ArchitectureStrip />
-
       {!c && (
         <div className="mb-6">
-          <EmptyState icon={ServerCrash} title="Platform controller unreachable" description="The FTP cluster cannot self-heal and node status is unknown. Check `docker compose ps platform-controller`." />
+          <EmptyState
+            icon={ServerCrash}
+            title="Platform controller unreachable"
+            description="The FTP cluster cannot self-heal and node status is unknown. Check `docker compose ps platform-controller`."
+          />
         </div>
       )}
 
       <KpiStrip data={data} />
 
-      {c && (
-        <>
-          <div className="mb-3 flex items-baseline justify-between gap-2">
-            <h2 className="text-base font-semibold">Nodes</h2>
-            <span className="text-muted-foreground text-xs">
-              probe every {c.probe.intervalMs / 1000}s · timeout {c.probe.timeoutMs} ms · down after {c.probe.failureThreshold} failures · auto-heal {c.autoHeal ? 'on' : 'off'}
-              {c.project ? ` · project ${c.project}` : ''}
-            </span>
-          </div>
-          <div className="mb-6 grid gap-4 lg:grid-cols-3">
-            {nodes.map((n) => (
-              <NodeCard key={n.slot} node={n} lb={data.loadBalancer.servers.find((s) => s.slot === n.slot)} onChaos={openChaos} />
-            ))}
-          </div>
-        </>
-      )}
-
-      <Charts nodeNames={nodeNames.length ? nodeNames : ['ftp-node-1', 'ftp-node-2', 'ftp-node-3']} />
-
-      <div className="grid gap-4 xl:grid-cols-5">
-        <Card className="gap-3 xl:col-span-3">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <RefreshCcw className="size-4" /> Recovery timeline
-              <NativeSelect
-                className="ml-auto h-8 text-xs"
-                value={eventNode}
-                onChange={setEventNode}
-                placeholder="All nodes"
-                options={nodeNames.map((n) => ({ value: n, label: n }))}
-              />
-            </CardTitle>
-            <CardDescription>Platform controller events, newest first</CardDescription>
-          </CardHeader>
-          <CardContent className="max-h-[640px] overflow-y-auto overscroll-contain">
-            <EventTimeline events={events} />
-          </CardContent>
-        </Card>
-        <div className="space-y-4 xl:col-span-2">
-          <PrometheusCard data={data.prometheus} />
-          <NotificationsCard data={data.notifications} />
+      <Tabs value={tab} onValueChange={setTab} className="gap-4">
+        <div className="-mx-1 overflow-x-auto px-1 pb-1">
+          <TabsList className="h-10">
+            <TabsTrigger value="nodes" className="px-3">
+              <Server /> Nodes <CountBadge n={unhealthy} tone="warning" />
+            </TabsTrigger>
+            <TabsTrigger value="metrics" className="px-3">
+              <ChartLine /> Metrics
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="px-3">
+              <RefreshCcw /> Recovery timeline <CountBadge n={c?.events.length ?? 0} />
+            </TabsTrigger>
+            <TabsTrigger value="alerts" className="px-3">
+              <Radar /> Alerts <CountBadge n={firing || pending} tone={firing ? 'destructive' : 'warning'} />
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="px-3">
+              <BellRing /> Notifications <CountBadge n={data.notifications.unread} tone="destructive" />
+            </TabsTrigger>
+          </TabsList>
         </div>
-      </div>
 
-      {c && data.prometheus.alerts.some((a) => a.state === 'firing') && (
-        <div className="border-destructive/40 bg-destructive/5 text-destructive fixed right-6 bottom-6 z-40 flex items-center gap-2 rounded-full border px-4 py-2 text-sm shadow-lg backdrop-blur">
-          <AlertTriangle className="size-4" /> {data.prometheus.alerts.filter((a) => a.state === 'firing').length} alert(s) firing
-        </div>
-      )}
+        <TabsContent value="nodes" className="space-y-4">
+          {c ? (
+            <>
+              <div className="text-muted-foreground flex flex-wrap items-baseline justify-between gap-2 text-xs">
+                <span>Open a node's menu to simulate a failure on it</span>
+                <span>
+                  probe every {c.probe.intervalMs / 1000}s · timeout {c.probe.timeoutMs} ms · down after {c.probe.failureThreshold} failures · auto-heal{' '}
+                  {c.autoHeal ? 'on' : 'off'}
+                  {c.project ? ` · project ${c.project}` : ''}
+                </span>
+              </div>
+              <div className="grid gap-4 lg:grid-cols-3">
+                {nodes.map((n) => (
+                  <NodeCard key={n.slot} node={n} lb={data.loadBalancer.servers.find((s) => s.slot === n.slot)} onChaos={openChaos} />
+                ))}
+              </div>
+            </>
+          ) : (
+            <EmptyState icon={Server} title="No node status" description="Node status comes from the platform controller." />
+          )}
+          <div>
+            <div className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">How it fits together</div>
+            <ArchitectureStrip />
+          </div>
+        </TabsContent>
 
-      <ChaosDrawer open={chaosOpen} onOpenChange={setChaosOpen} node={chaosNode} />
+        <TabsContent value="metrics">
+          <Charts nodeNames={nodeNames.length ? nodeNames : ['ftp-node-1', 'ftp-node-2', 'ftp-node-3']} minutes={minutes} setMinutes={setMinutes} />
+        </TabsContent>
+
+        <TabsContent value="timeline">
+          <PlatformEventsPanel />
+        </TabsContent>
+
+        <TabsContent value="alerts">
+          <div className="grid gap-4 lg:grid-cols-5">
+            <div className="lg:col-span-3">
+              <AlertsCard data={data.prometheus} />
+            </div>
+            <div className="lg:col-span-2">
+              <TargetsCard data={data.prometheus} />
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <PlatformNotificationsPanel nodes={nodeNames.length ? nodeNames : ['ftp-node-1', 'ftp-node-2', 'ftp-node-3']} />
+        </TabsContent>
+      </Tabs>
     </>
   );
 }

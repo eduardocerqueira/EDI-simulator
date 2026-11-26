@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowUpFromLine, Loader2, MoreVertical, Network, Server, Zap } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, Loader2, MoreVertical, Network, Server, Zap } from '@edi/ui/icons';
 import { Badge } from '@edi/ui/components/badge';
 import { Button } from '@edi/ui/components/button';
 import { Card, CardContent } from '@edi/ui/components/card';
@@ -47,7 +47,7 @@ export function NodeCard({ node, lb, onChaos }: { node: PlatformNode; lb?: LbSer
       <div className="h-1 w-full" style={{ background: nodeColor(node.slot) }} />
       <CardContent className="space-y-4 p-5">
         <div className="flex items-start gap-3">
-          <div className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl', toneBg[meta.tone])}>
+          <div className={cn('flex size-11 shrink-0 items-center justify-center rounded-none', toneBg[meta.tone])}>
             {busy ? <Loader2 className={cn('size-5 animate-spin', toneText[meta.tone])} /> : <Server className={cn('size-5', toneText[meta.tone])} />}
           </div>
           <div className="min-w-0 flex-1">
@@ -77,10 +77,10 @@ export function NodeCard({ node, lb, onChaos }: { node: PlatformNode; lb?: LbSer
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className={cn('flex items-center gap-3 rounded-xl px-4 py-3', toneBg[meta.tone])}>
+            <div className={cn('flex items-center gap-3 rounded-none px-4 py-3', toneBg[meta.tone])}>
               <span className="relative flex size-3">
-                {ready && <span className="bg-success absolute inline-flex size-full animate-ping rounded-full opacity-60" />}
-                <span className={cn('relative inline-flex size-3 rounded-full', toneDot[meta.tone], (bad || busy) && 'animate-pulse')} />
+                {ready && <span className="bg-success absolute inline-flex size-full animate-ping rounded-none opacity-60" />}
+                <span className={cn('relative inline-flex size-3 rounded-none', toneDot[meta.tone], (bad || busy) && 'animate-pulse')} />
               </span>
               <span className={cn('text-lg font-semibold tracking-wide uppercase', toneText[meta.tone])}>{meta.label}</span>
               {node.consecutiveFailures > 0 && <Badge variant="destructive" className="ml-auto">{node.consecutiveFailures} failed probe{node.consecutiveFailures > 1 ? 's' : ''}</Badge>}
@@ -113,7 +113,7 @@ export function NodeCard({ node, lb, onChaos }: { node: PlatformNode; lb?: LbSer
           {node.lastRecoverySeconds !== undefined && <Row label="Last recovery">{node.lastRecoverySeconds}s</Row>}
         </div>
 
-        <div className="bg-muted/40 rounded-xl border p-3">
+        <div className="bg-muted/40 rounded-none border p-3">
           <div className="mb-2 flex items-center gap-2 text-xs font-medium">
             <Network className="size-3.5" /> Load balancer
             {lb ? (

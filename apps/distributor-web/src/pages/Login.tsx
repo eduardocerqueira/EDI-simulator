@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowRight, Boxes, FileCheck2, Loader2, Package, Workflow } from 'lucide-react';
+import { ArrowRight, Boxes, FileCheck2, Loader2, Package, Workflow } from '@edi/ui/icons';
 import { Button } from '@edi/ui/components/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@edi/ui/components/card';
 import { Input } from '@edi/ui/components/input';
@@ -34,10 +34,10 @@ export function LoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="from-primary/90 to-primary relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br p-10 text-white lg:flex">
-        <div className="absolute -top-24 -right-24 size-96 rounded-full bg-white/10 blur-2xl" />
-        <div className="absolute -bottom-32 -left-16 size-96 rounded-full bg-black/10 blur-2xl" />
+        <div className="absolute -top-24 -right-24 size-96 rounded-none bg-white/10 blur-2xl" />
+        <div className="absolute -bottom-32 -left-16 size-96 rounded-none bg-black/10 blur-2xl" />
         <div className="relative flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
+          <div className="flex size-10 items-center justify-center rounded-none bg-white/15 backdrop-blur">
             <Package className="size-5" />
           </div>
           <div>
@@ -54,7 +54,7 @@ export function LoginPage() {
             <li className="flex items-center gap-3"><FileCheck2 className="size-5" /> Validated down to every element, acknowledged with TA1 / 997</li>
             <li className="flex items-center gap-3"><Boxes className="size-5" /> Mapped to JSON, ingested and pushed to the order app</li>
           </ul>
-          <pre className="rounded-lg bg-black/20 p-4 font-mono text-xs leading-relaxed text-white/90">
+          <pre className="rounded-none bg-black/20 p-4 font-mono text-xs leading-relaxed text-white/90">
 {`ISA*00*          *00*          *ZZ*ZEPHYRWOOD     *ZZ*HARVESTHUB     *…~
 GS*IB*ZEPHYRWOOD*HARVESTHUB*20261125*1430*1001*X*004010~
 ST*846*0001~
@@ -85,7 +85,7 @@ QTY*33*240*CA~`}
               <Button type="submit" className="w-full" disabled={busy}>
                 {busy ? <Loader2 className="animate-spin" /> : <ArrowRight />} Sign in
               </Button>
-              <p className="text-muted-foreground bg-muted/60 rounded-md p-3 text-xs">
+              <p className="text-muted-foreground bg-muted/60 rounded-none p-3 text-xs">
                 Demo credentials: <code className="font-mono">admin@harvesthub.local</code> / <code className="font-mono">admin123</code>
               </p>
             </form>

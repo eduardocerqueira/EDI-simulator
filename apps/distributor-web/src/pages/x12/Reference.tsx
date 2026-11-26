@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search } from 'lucide-react';
+import { Search } from '@edi/ui/icons';
 import { Badge } from '@edi/ui/components/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@edi/ui/components/card';
 import { Input } from '@edi/ui/components/input';
@@ -127,9 +127,9 @@ export function ReferencePage() {
                   <button
                     key={s.id}
                     onClick={() => setSelected(s.id)}
-                    className={cn('flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm', selected === s.id ? 'bg-accent' : 'hover:bg-muted')}
+                    className={cn('flex w-full cursor-pointer items-center gap-2 rounded-none px-2 py-1.5 text-left text-sm', selected === s.id ? 'bg-accent' : 'hover:bg-muted')}
                   >
-                    <span className={cn('h-4 w-1 rounded-full', LAYER_STYLE[layerOf(s.id)]!.bar)} />
+                    <span className={cn('h-4 w-1 rounded-none', LAYER_STYLE[layerOf(s.id)]!.bar)} />
                     <Mono className="w-9 font-semibold">{s.id}</Mono>
                     <span className="text-muted-foreground truncate text-xs">{s.name}</span>
                   </button>
@@ -173,7 +173,7 @@ export function ReferencePage() {
                           {e.codes ? (
                             <div className="flex flex-wrap gap-1">
                               {Object.entries(e.codes).map(([c, d]) => (
-                                <span key={c} className="bg-muted rounded px-1.5 py-0.5" title={d}>
+                                <span key={c} className="bg-muted rounded-none px-1.5 py-0.5" title={d}>
                                   <b className="font-mono">{c}</b> <span className="text-muted-foreground">{d}</span>
                                 </span>
                               ))}

@@ -1,10 +1,10 @@
-import { Sprout } from 'lucide-react';
+import { Sprout } from '@edi/ui/icons';
 import { cn } from '@edi/ui/lib/utils';
 
 export function Logo({ className, compact }: { className?: string; compact?: boolean }) {
   return (
     <div className={cn('flex items-center gap-2.5', className)}>
-      <div className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-xl shadow-sm">
+      <div className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-none shadow-sm">
         <Sprout className="size-5" />
       </div>
       {!compact && (

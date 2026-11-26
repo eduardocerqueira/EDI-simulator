@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeftRight, ArrowRight, Boxes, FileJson, Loader2, RotateCw } from 'lucide-react';
+import { ArrowLeftRight, ArrowRight, Boxes, FileJson, Loader2, RotateCw } from '@edi/ui/icons';
 import { Badge } from '@edi/ui/components/badge';
 import { Button } from '@edi/ui/components/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@edi/ui/components/card';
@@ -99,7 +99,7 @@ function Pipeline({ t }: { t: TxDetail }) {
           <div key={st.key} className="flex items-center gap-1">
             <div
               className={cn(
-                'rounded-full border px-3 py-1 text-xs font-medium',
+                'rounded-none border px-3 py-1 text-xs font-medium',
                 v === 'done' && 'border-success/40 bg-success/10 text-success',
                 v === 'fail' && 'border-destructive/40 bg-destructive/10 text-destructive',
                 v === 'pending' && 'border-warning/50 bg-warning/15 animate-pulse',

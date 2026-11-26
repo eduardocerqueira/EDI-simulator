@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertOctagon, AlertTriangle, BellOff, CheckCheck, Info, Rabbit, Server } from 'lucide-react';
+import { AlertOctagon, AlertTriangle, BellOff, CheckCheck, Info, Rabbit, Server } from '@edi/ui/icons';
 import { Badge } from '@edi/ui/components/badge';
 import { Button } from '@edi/ui/components/button';
 import { Card } from '@edi/ui/components/card';
@@ -9,6 +9,7 @@ import { cn } from '@edi/ui/lib/utils';
 import { api, qs, type Page } from '@/lib/api';
 import { fmt } from '@/lib/format';
 import { useUrlFilters } from '@/lib/hooks';
+import { notificationLink } from '@/lib/actions';
 import { EmptyState, ErrorState, LiveDot, LoadingRows, NativeSelect, PageHeader, Pagination } from '@/components/common';
 
 interface Notification {
@@ -94,16 +95,16 @@ export function NotificationsPage() {
               const s = SEV[n.severity as keyof typeof SEV] ?? SEV.INFO;
               const isPlatform = n.type.startsWith('platform.');
               const Icon = isPlatform ? Server : s.icon;
-              const link = isPlatform ? '/platform' : n.transactionId ? `/edi/transactions/${n.transactionId}` : n.interchangeId ? `/edi/interchanges/${n.interchangeId}` : n.orderNumber ? `/orders?q=${n.orderNumber}` : null;
+              const link = notificationLink(n);
               const errors: Array<{ code: string; x12Code?: string; message: string }> = n.payload?.errors ?? [];
               return (
                 <li key={n.id} className={cn('flex gap-4 border-b px-4 py-4 last:border-0', !n.read && 'bg-primary/[0.03]')}>
-                  <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-full', s.cls)}>
+                  <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-none', s.cls)}>
                     <Icon className="size-4" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      {!n.read && <span className="bg-primary size-2 rounded-full" />}
+                      {!n.read && <span className="bg-primary size-2 rounded-none" />}
                       <span className="font-medium">{n.title}</span>
                       <Badge variant="outline" className="font-mono text-[10px]">{n.type}</Badge>
                       {n.source !== 'rabbitmq' && <Badge variant="warning">{n.source}</Badge>}

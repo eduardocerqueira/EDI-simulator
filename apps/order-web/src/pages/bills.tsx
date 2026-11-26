@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle2, CreditCard, Receipt, Wallet } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, CreditCard, Receipt, Wallet } from '@edi/ui/icons';
 import { Button } from '@edi/ui/components/button';
 import { Card, CardContent } from '@edi/ui/components/card';
 import { Skeleton } from '@edi/ui/components/skeleton';

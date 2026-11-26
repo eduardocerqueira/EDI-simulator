@@ -115,6 +115,16 @@ export async function platformRoutes(app: FastifyInstance) {
     };
   });
 
+  /** Recovery timeline: filtered, paginated controller events (node, type, severity, q, page, pageSize). */
+  app.get('/platform/events', async (req, reply) => {
+    const f = q(req);
+    const params = new URLSearchParams();
+    for (const k of ['node', 'type', 'severity', 'q', 'page', 'pageSize']) if (f[k]) params.set(k, f[k]!);
+    const r = await getJson<Record<string, unknown>>(`${config.platform.controllerUrl}/api/events?${params}`);
+    if (!r) return reply.code(503).send({ error: 'Platform controller unreachable' });
+    return r;
+  });
+
   app.get('/platform/timeseries', async (req) => {
     const minutes = Math.min(360, Math.max(5, Number(q(req).minutes ?? 15) || 15));
     const end = Math.floor(Date.now() / 1000);

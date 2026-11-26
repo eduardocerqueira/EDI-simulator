@@ -15,6 +15,8 @@ export interface ProducerOptions {
   types: SupportedType[];
   producers: Producer[];
   intervalMs: number;
+  /** When set, wait a random 0..delaySec seconds between files instead of the fixed interval. */
+  delaySec?: number;
   bootstrap: boolean;
   scenario?: string;
   outDir: string;
@@ -23,17 +25,17 @@ export interface ProducerOptions {
   ftp: { host: string; port: number; password: string };
 }
 
-interface State {
+export interface State {
   [isaId: string]: { lastIcn: number; history: string[] };
 }
 
 const TYPE_WEIGHTS: Record<SupportedType, number> = { '832': 1, '846': 3, '856': 2 };
 
-function loadState(dir: string): State {
+export function loadState(dir: string): State {
   const f = join(dir, 'state.json');
   return existsSync(f) ? (JSON.parse(readFileSync(f, 'utf8')) as State) : {};
 }
-function saveState(dir: string, s: State) {
+export function saveState(dir: string, s: State) {
   writeFileSync(join(dir, 'state.json'), JSON.stringify(s, null, 2));
 }
 
@@ -76,27 +78,70 @@ async function uploadAs(opts: ProducerOptions, producer: Producer, fileName: str
   }
 }
 
+export type Job = { producer: Producer; type: SupportedType; scenario?: Scenario };
+
+export function forcedScenario(opts: Pick<ProducerOptions, 'scenario'>): Scenario | undefined {
+  const forced = opts.scenario ? SCENARIOS.find((s) => s.id === opts.scenario) : undefined;
+  if (opts.scenario && !forced) throw new Error(`Unknown scenario "${opts.scenario}". Run "npm run sim:scenarios" to list them.`);
+  return forced;
+}
+
+/** One transaction for `producer`: weighted type, and an injected error with probability badRatio (or the forced scenario). */
+export function planJob(opts: Pick<ProducerOptions, 'types' | 'badRatio'>, producer: Producer, forced?: Scenario): Job {
+  let type = weighted(Object.fromEntries(opts.types.map((t) => [t, TYPE_WEIGHTS[t]])) as Partial<Record<SupportedType, number>>);
+  let scenario: Scenario | undefined;
+  if (forced) {
+    scenario = forced;
+    if (forced.types && !forced.types.includes(type)) type = forced.types[0] as SupportedType;
+  } else if (chance(opts.badRatio)) {
+    scenario = pick(scenariosFor(type));
+  }
+  return { producer, type, scenario };
+}
+
+export interface Delivery {
+  fileName: string;
+  controlNumber: string;
+  ok: boolean;
+  attempts: number;
+  error?: string;
+  ms: number;
+}
+
+/** Build the interchange, keep a local copy + manifest line, and upload it over FTP (with retries). */
+export async function deliverJob(opts: ProducerOptions, state: State, job: Job): Promise<Delivery> {
+  const started = Date.now();
+  const icn = nextIcn(state, job.producer);
+  const history = state[job.producer.isaId]!.history;
+  const products = chooseProducts(productsOf(job.producer.code), job.type);
+  const { x12, controlNumber } = buildInterchange({
+    producer: job.producer, type: job.type, controlNumber: icn, products, scenario: job.scenario,
+    previousControlNumber: history.at(-1), usage: opts.usage,
+  });
+  history.push(String(icn).padStart(9, '0'));
+  if (history.length > 50) history.shift();
+  const fileName = `${job.type}_${job.producer.isaId}_${controlNumber}${job.scenario ? `_${job.scenario.id}` : ''}.x12`;
+  writeFileSync(join(opts.outDir, 'sent', fileName), x12);
+  appendFileSync(join(opts.outDir, 'manifest.jsonl'), JSON.stringify({ at: new Date().toISOString(), fileName, producer: job.producer.isaId, type: job.type, icn: controlNumber, scenario: job.scenario?.id ?? null, expected: job.scenario?.expected ?? 'TA1 A / 997 A / ingested' }) + '\n');
+  if (opts.dryRun) return { fileName, controlNumber, ok: true, attempts: 0, ms: Date.now() - started };
+  try {
+    const attempts = await uploadWithRetry(opts, job.producer, fileName, x12);
+    return { fileName, controlNumber, ok: true, attempts, ms: Date.now() - started };
+  } catch (e) {
+    return { fileName, controlNumber, ok: false, attempts: 4, error: (e as Error).message, ms: Date.now() - started };
+  }
+}
+
+export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export async function runProducers(opts: ProducerOptions) {
   mkdirSync(join(opts.outDir, 'sent'), { recursive: true });
   const state = loadState(opts.outDir);
-  const forced = opts.scenario ? SCENARIOS.find((s) => s.id === opts.scenario) : undefined;
-  if (opts.scenario && !forced) throw new Error(`Unknown scenario "${opts.scenario}". Use --list-scenarios.`);
+  const forced = forcedScenario(opts);
 
-  type Job = { producer: Producer; type: SupportedType; scenario?: Scenario };
   const jobs: Job[] = [];
   if (opts.bootstrap) for (const p of opts.producers) jobs.push({ producer: p, type: '832' });
-  for (let i = 0; i < opts.count; i++) {
-    const producer = pick(opts.producers);
-    let type = weighted(Object.fromEntries(opts.types.map((t) => [t, TYPE_WEIGHTS[t]])) as Partial<Record<SupportedType, number>>);
-    let scenario: Scenario | undefined;
-    if (forced) {
-      scenario = forced;
-      if (forced.types && !forced.types.includes(type)) type = forced.types[0] as SupportedType;
-    } else if (chance(opts.badRatio)) {
-      scenario = pick(scenariosFor(type));
-    }
-    jobs.push({ producer, type, scenario });
-  }
+  for (let i = 0; i < opts.count; i++) jobs.push(planJob(opts, pick(opts.producers), forced));
 
   console.log(c.bold(`\n▶ Simulating ${jobs.length} X12 interchange(s) from ${opts.producers.length} producer(s)`) +
     c.dim(` → ${opts.dryRun ? `local folder ${opts.outDir}/sent (dry run)` : `ftp://${opts.ftp.host}:${opts.ftp.port}`}\n`));
@@ -105,37 +150,21 @@ export async function runProducers(opts: ProducerOptions) {
   let ok = 0;
   let failed = 0;
   for (const [i, job] of jobs.entries()) {
-    const icn = nextIcn(state, job.producer);
-    const history = state[job.producer.isaId]!.history;
-    const products = chooseProducts(productsOf(job.producer.code), job.type);
-    const { x12, controlNumber } = buildInterchange({
-      producer: job.producer, type: job.type, controlNumber: icn, products, scenario: job.scenario,
-      previousControlNumber: history.at(-1), usage: opts.usage,
-    });
-    history.push(String(icn).padStart(9, '0'));
-    if (history.length > 50) history.shift();
-    const fileName = `${job.type}_${job.producer.isaId}_${controlNumber}${job.scenario ? `_${job.scenario.id}` : ''}.x12`;
-    writeFileSync(join(opts.outDir, 'sent', fileName), x12);
-    appendFileSync(join(opts.outDir, 'manifest.jsonl'), JSON.stringify({ at: new Date().toISOString(), fileName, producer: job.producer.isaId, type: job.type, icn: controlNumber, scenario: job.scenario?.id ?? null, expected: job.scenario?.expected ?? 'TA1 A / 997 A / ingested' }) + '\n');
-    let result = c.green('uploaded');
-    if (!opts.dryRun) {
-      try {
-        const attempt = await uploadWithRetry(opts, job.producer, fileName, x12);
-        if (attempt > 1) result = c.yellow(`uploaded (attempt ${attempt})`);
-        ok++;
-      } catch (e) {
-        failed++;
-        result = c.red(`FTP error: ${(e as Error).message}`);
-      }
-    } else {
-      ok++;
-      result = c.dim('written');
-    }
+    const d = await deliverJob(opts, state, job);
+    let result: string;
+    if (opts.dryRun) result = c.dim('written');
+    else if (!d.ok) result = c.red(`FTP error: ${d.error}`);
+    else result = d.attempts > 1 ? c.yellow(`uploaded (attempt ${d.attempts})`) : c.green('uploaded');
+    if (d.ok) ok++;
+    else failed++;
     rows.push([
-      String(i + 1), job.producer.isaId, job.type, controlNumber,
+      String(i + 1), job.producer.isaId, job.type, d.controlNumber,
       job.scenario ? c.yellow(job.scenario.id) : c.green('valid'), job.scenario ? c.dim(job.scenario.expected) : c.dim('accepted'), result,
     ]);
-    if (opts.intervalMs && i < jobs.length - 1) await new Promise((r) => setTimeout(r, opts.intervalMs));
+    if (i < jobs.length - 1) {
+      if (opts.delaySec !== undefined) await sleep(Math.random() * opts.delaySec * 1000);
+      else if (opts.intervalMs) await sleep(opts.intervalMs);
+    }
   }
   saveState(opts.outDir, state);
   console.log(table(['#', 'Producer', 'Type', 'ICN', 'Scenario', 'Expected', 'Result'], rows));

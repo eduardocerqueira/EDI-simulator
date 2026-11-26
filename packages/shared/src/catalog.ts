@@ -32,7 +32,13 @@ export interface Producer {
   postalCode: string;
   address: string;
   specialty: string;
+  /** fictional EDI coordinator; e-mails use the reserved .example domain */
+  contactName: string;
+  contactEmail: string;
 }
+
+/** Fictional EDI coordinators, one per producer (same order as PRODUCERS). */
+const CONTACTS = ['Ada Fernwood', 'Bram Quill', 'Cora Mossley', 'Dax Pebble', 'Elin Thistle', 'Finn Glimmer', 'Gwen Ironside', 'Hal Wisp', 'Isla Lantern', 'Jory Drift'];
 
 const p = (
   n: number,
@@ -58,6 +64,8 @@ const p = (
   city,
   state,
   postalCode,
+  contactName: CONTACTS[n - 1] ?? 'EDI Coordinator',
+  contactEmail: `edi@${isaId.toLowerCase()}.example`,
 });
 
 export const PRODUCERS: Producer[] = [

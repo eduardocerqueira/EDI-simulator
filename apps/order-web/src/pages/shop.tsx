@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, FileCode2, Search, ShoppingCart, Sprout, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileCode2, Search, ShoppingCart, Sprout, Check } from '@edi/ui/icons';
 import { Badge } from '@edi/ui/components/badge';
 import { Button } from '@edi/ui/components/button';
 import { Card, CardContent } from '@edi/ui/components/card';
@@ -118,7 +118,7 @@ export function ShopPage() {
 
           {products.isLoading ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-xl" />)}
+              {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-none" />)}
             </div>
           ) : !products.data?.items.length ? (
             <EmptyState icon={Search} title="No products match" description="Try a different search or clear the filters." action={<Button variant="outline" onClick={() => { setSearch(''); setCategory(ALL); setProducer(ALL); setInStock(false); }}>Clear filters</Button>} />

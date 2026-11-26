@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Inbox, type LucideIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Inbox, type LucideIcon } from '@edi/ui/icons';
 import { Badge } from '@edi/ui/components/badge';
 import { Button } from '@edi/ui/components/button';
 import { Card, CardContent } from '@edi/ui/components/card';
@@ -73,7 +73,7 @@ export function StatCard({
             )}
           </div>
           {Icon && (
-            <div className={cn('flex size-8 items-center justify-center rounded-lg', toneCls)}>
+            <div className={cn('flex size-8 items-center justify-center rounded-none', toneCls)}>
               <Icon className="size-4" />
             </div>
           )}
@@ -89,7 +89,7 @@ export function StatCard({
 export function EmptyState({ title = 'Nothing here yet', description, icon: Icon = Inbox }: { title?: string; description?: ReactNode; icon?: LucideIcon }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-      <div className="bg-muted flex size-12 items-center justify-center rounded-full">
+      <div className="bg-muted flex size-12 items-center justify-center rounded-none">
         <Icon className="text-muted-foreground size-6" />
       </div>
       <div className="font-medium">{title}</div>
@@ -124,7 +124,7 @@ export function LoadingPage() {
 
 export function ErrorState({ error }: { error: unknown }) {
   return (
-    <div className="border-destructive/30 bg-destructive/5 text-destructive rounded-lg border p-4 text-sm">
+    <div className="border-destructive/30 bg-destructive/5 text-destructive rounded-none border p-4 text-sm">
       {(error as Error)?.message ?? 'Something went wrong'}
     </div>
   );
@@ -173,7 +173,7 @@ export function Mono({ children, className }: { children: ReactNode; className?:
 
 export function CodeBlock({ children, className, maxHeight = 'max-h-[560px]' }: { children: ReactNode; className?: string; maxHeight?: string }) {
   return (
-    <pre className={cn('bg-muted/50 overflow-auto rounded-lg border p-4 font-mono text-xs leading-relaxed', maxHeight, className)}>{children}</pre>
+    <pre className={cn('bg-muted/50 overflow-auto rounded-none border p-4 font-mono text-xs leading-relaxed', maxHeight, className)}>{children}</pre>
   );
 }
 
@@ -203,12 +203,12 @@ export function RangeSelect({ value, onChange, options }: { value: number; onCha
     [168, '7d'],
   ];
   return (
-    <div className="bg-muted inline-flex rounded-lg p-[3px]">
+    <div className="bg-muted inline-flex rounded-none p-[3px]">
       {opts.map(([v, l]) => (
         <button
           key={v}
           onClick={() => onChange(v)}
-          className={cn('cursor-pointer rounded-md px-3 py-1 text-sm font-medium transition-colors', value === v ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}
+          className={cn('cursor-pointer rounded-none px-3 py-1 text-sm font-medium transition-colors', value === v ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}
         >
           {l}
         </button>
@@ -221,8 +221,8 @@ export function LiveDot({ label = 'Live' }: { label?: string }) {
   return (
     <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
       <span className="relative flex size-2">
-        <span className="bg-success absolute inline-flex size-full animate-ping rounded-full opacity-60" />
-        <span className="bg-success relative inline-flex size-2 rounded-full" />
+        <span className="bg-success absolute inline-flex size-full animate-ping rounded-none opacity-60" />
+        <span className="bg-success relative inline-flex size-2 rounded-none" />
       </span>
       {label}
     </span>
@@ -243,7 +243,7 @@ export function NativeSelect({ value, onChange, options, className, placeholder 
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={cn('border-input dark:bg-input/30 h-9 cursor-pointer rounded-md border bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50', className)}
+      className={cn('border-input dark:bg-input/30 h-9 cursor-pointer rounded-none border bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50', className)}
     >
       {placeholder !== undefined && <option value="">{placeholder}</option>}
       {options.map((o) => (

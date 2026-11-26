@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { BarChart3, LayoutDashboard, LogOut, Menu, Moon, Receipt, ShoppingBasket, Store, Sun, Package } from 'lucide-react';
+import { BarChart3, LayoutDashboard, LogOut, Menu, Moon, Receipt, ShoppingBasket, Store, Sun, Package } from '@edi/ui/icons';
 import { Button } from '@edi/ui/components/button';
 import { Avatar, AvatarFallback } from '@edi/ui/components/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@edi/ui/components/dropdown-menu';
@@ -52,7 +52,7 @@ export function AppLayout() {
                 to={n.to}
                 end={n.end}
                 className={({ isActive }) =>
-                  cn('flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors', isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground')
+                  cn('flex items-center gap-2 rounded-none px-3 py-2 text-sm font-medium transition-colors', isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground')
                 }
               >
                 <n.icon className="size-4" />
@@ -68,7 +68,7 @@ export function AppLayout() {
               <ShoppingBasket />
               <span className="hidden sm:inline">Cart</span>
               {cart.count > 0 && (
-                <span className="bg-primary text-primary-foreground absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-semibold tabular-nums">
+                <span className="bg-primary text-primary-foreground absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-none px-1 text-[11px] font-semibold tabular-nums">
                   {cart.count > 99 ? '99+' : cart.count}
                 </span>
               )}
@@ -113,7 +113,7 @@ export function AppLayout() {
                 to={n.to}
                 end={n.end}
                 onClick={() => setMobileOpen(false)}
-                className={({ isActive }) => cn('flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium', isActive ? 'bg-primary/10 text-primary' : 'hover:bg-accent')}
+                className={({ isActive }) => cn('flex items-center gap-3 rounded-none px-3 py-2.5 text-sm font-medium', isActive ? 'bg-primary/10 text-primary' : 'hover:bg-accent')}
               >
                 <n.icon className="size-4" />
                 {n.label}

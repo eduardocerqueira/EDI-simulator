@@ -32,6 +32,21 @@ export const config = {
     prometheusUrl: env('PROMETHEUS_URL', 'http://localhost:9090'),
     controllerUrl: env('PLATFORM_CONTROLLER_URL', 'http://localhost:9100'),
   },
+  email: {
+    /** Only a simulated Resend is wired in this version: nothing leaves the machine. */
+    provider: 'resend-simulated' as const,
+    from: env('EMAIL_FROM', 'Harvest Hub EDI Operations <edi-support@harvesthub.example>'),
+    /** the "verified" sending domain: the simulated API rejects other From domains with 403, like Resend */
+    sendingDomain: env('EMAIL_SENDING_DOMAIN', 'harvesthub.example'),
+    /** inbound domain; replies go to edi-replies+RPT-000123@<inboundDomain> so they thread back to the report */
+    inboundDomain: env('EMAIL_INBOUND_DOMAIN', 'inbound.harvesthub.example'),
+    /** Svix-style signing secret shared by the simulated Resend and our webhook endpoint */
+    webhookSecret: env('RESEND_WEBHOOK_SECRET', `whsec_${Buffer.from('harvest-hub-dev-webhook-signing-key').toString('base64')}`),
+    webhookUrl: env('RESEND_WEBHOOK_URL', `http://127.0.0.1:${num('PORT', 4000)}/api/webhooks/resend`),
+    /** share of report e-mails a (simulated) producer answers */
+    simReplyRate: Number(env('RESEND_SIM_REPLY_RATE', '0.7')),
+    simReplyDelayMs: num('RESEND_SIM_REPLY_DELAY_MS', 12_000),
+  },
   markup: Number(env('PRICE_MARKUP', '0.35')),
   lowStockThreshold: num('LOW_STOCK_THRESHOLD', 25),
   admin: {

@@ -39,8 +39,8 @@ const OVERLAY = `
       @keyframes __demo_r { from { transform: scale(.3); opacity: 1 } to { transform: scale(1.6); opacity: 0 } }
       #__demo_caption { position: fixed; z-index: 2147483645; left: 50%; bottom: 28px; transform: translate(-50%, 12px); opacity: 0;
         transition: opacity 350ms ease, transform 350ms ease; pointer-events: none; max-width: 980px;
-        background: rgba(10, 14, 12, .88); color: #fff; border: 1px solid rgba(255,255,255,.14); border-radius: 14px;
-        padding: 12px 22px; box-shadow: 0 12px 40px rgba(0,0,0,.45); font: 500 19px/1.35 Inter, ui-sans-serif, system-ui, sans-serif; text-align: center; }
+        background: rgba(10, 14, 12, .88); color: #fff; border: 1px solid rgba(255,255,255,.14); border-radius: 0;
+        padding: 12px 22px; box-shadow: 0 12px 40px rgba(0,0,0,.45); font: 600 19px/1.35 'Nunito Sans', ui-sans-serif, system-ui, sans-serif; text-align: center; }
       #__demo_caption.show { opacity: 1; transform: translate(-50%, 0); }
       #__demo_caption small { display: block; margin-top: 4px; font-size: 14.5px; font-weight: 400; color: rgba(255,255,255,.72); }
       #__demo_caption b { color: #4ade80; font-weight: 600; }
@@ -252,6 +252,10 @@ async function infra(page: Page) {
   await run(page, 'npm run -s sim:producers -- --bootstrap -n 8 -b 0.4 -i 120', { pauseAfter: 5000 });
 
   await clear();
+  await caption(page, '<b>Longevity mode</b>: producers ramp up and down at random, each sending on its own', '<b>--ramp 0,10 --runs 3000 --duration 10</b> → about 3000 files in 10 minutes · here a 30-second sample');
+  await run(page, 'npm run -s sim:producers -- --ramp 0,6 --runs 60 --duration 0.5 -b 0.25', { pauseAfter: 5000 });
+
+  await clear();
   await caption(page, 'The load balancer spreads the sessions across the three nodes', 'each node owns a passive port range, so FTP data connections reach the node holding the session');
   await run(page, `docker compose logs ftp-node-1 ftp-node-2 ftp-node-3 2>&1 | grep -oE 'ftp-node-[0-9]+.*OK (UPLOAD|DOWNLOAD)' | awk '{print $1, $NF}' | sort | uniq -c`, { pauseAfter: 3500 });
   await caption(page, 'The distributor validates every envelope and acknowledges it', 'accepted → ingested and pushed to the order app as JSON · rejected → TA1 / 997 with the X12 error code');
@@ -321,139 +325,187 @@ async function distributor(page: Page) {
   await step('dashboard range', async () => { await click(page, page.getByRole('tab', { name: '24h' }).or(page.getByRole('button', { name: '24h' })).first(), 1500); });
   await scroll(page, 650, { x: 840, y: 520 });
   await caption(page, 'Throughput, top validation errors, recent envelopes and the producer scorecard');
-  await scroll(page, 700);
   await sleep(1500);
 
   await step('interchanges', async () => {
     await caption(page, '');
     await click(page, page.getByRole('link', { name: 'Interchanges' }), 1500);
     await caption(page, 'Every ISA/IEA <b>interchange</b> received over FTP', 'status, TA1 verdict, transaction sets and the acknowledgments sent back');
-    await sleep(2500);
+    await sleep(2200);
     await click(page, page.locator('tbody tr', { hasText: 'Accepted' }).first(), 2200);
   });
-  await caption(page, 'The trace page: how this file arrived and where its data went', 'FTP pickup & archive path, SHA-256, attempts, processing time');
-  await sleep(3500);
   await step('envelope', async () => {
-    await caption(page, '');
+    await caption(page, 'The trace page: the envelope, layer by layer — ISA → GS → ST', 'built from the real file · FTP pickup, archive path, SHA-256, processing time');
     await point(page, page.getByText('Envelope structure').first());
-    await caption(page, 'The envelope, layer by layer: ISA → GS → ST', 'the same picture as the X12 course slides, built from the real file (hover any field)');
     await sleep(1500);
     await point(page, page.getByText(/ISA13/).first());
     await sleep(1500);
-    await point(page, page.getByText(/GS06/).first());
-    await sleep(1500);
-  });
-  await scroll(page, 700, { x: 1000, y: 520 });
-  await step('segments', async () => {
-    await caption(page, '');
+    await scroll(page, 700, { x: 1000, y: 520 });
     await click(page, page.getByRole('tab', { name: /Segments/ }), 1000);
     await caption(page, 'Annotated segments: every element with its name and code meaning');
-    await click(page, page.getByRole('button', { name: /ISA\*00/ }).first(), 2200);
     await click(page, page.getByRole('button', { name: /LIN\*/ }).first(), 2500);
-  });
-  await step('timeline', async () => {
-    await caption(page, '');
-    await click(page, page.getByRole('tab', { name: /Timeline/ }), 1200);
-    await caption(page, 'Processing timeline', 'discovered → downloaded → parsed → validated → mapped → ingested → TA1/997 sent → delivered to the order app');
-    await scroll(page, 400);
-    await sleep(2500);
-  });
-  await step('acks', async () => {
-    await caption(page, '');
-    await click(page, page.getByRole('tab', { name: /Acknowledgments/ }), 1200);
-    await caption(page, 'The TA1 and 997 generated for this interchange and uploaded back over FTP');
-    await sleep(3000);
   });
 
   await step('rejected', async () => {
     await caption(page, '');
     await goto(page, `${DIST}/edi/interchanges?status=REJECTED`);
     await caption(page, 'Bad data is caught and explained', 'filter: rejected interchanges');
-    await sleep(1800);
+    await sleep(1500);
     await click(page, page.locator('tbody tr').first(), 2200);
-    await caption(page, 'Why it was rejected — with the exact TA1 / 997 error code');
-    await sleep(3000);
     await scroll(page, 650, { x: 1000, y: 520 });
     await click(page, page.getByRole('tab', { name: /Validation/ }), 1200);
-    await sleep(3500);
+    await caption(page, 'Why it was rejected — with the exact TA1 / 997 error code');
+    await sleep(3000);
   });
 
   await step('transaction', async () => {
     await caption(page, '');
     await goto(page, `${DIST}/edi/transactions?status=DELIVERED`);
-    await caption(page, 'Transaction sets (ST/SE)', 'click one to see the X12 ⇄ JSON conversion');
-    await sleep(1500);
     await click(page, page.locator('tbody tr').first(), 2200);
-    await caption(page, 'X12 on the left, the JSON produced from it on the right');
+    await caption(page, 'Transaction sets: X12 on the left, the JSON produced from it on the right', 'then delivered to the order app over REST — idempotent, retried with backoff');
     await sleep(3500);
-    await scroll(page, 500, { x: 1000, y: 520 });
-    await click(page, page.getByRole('tab', { name: /Payload/ }), 1500);
-    await caption(page, 'The exact JSON sent to the order app over REST', 'idempotent on transactionId · retried with exponential backoff');
-    await sleep(3500);
-    await click(page, page.getByRole('tab', { name: /Inventory/ }), 1500);
-    await caption(page, 'The inventory movements this transaction caused');
-    await sleep(2500);
   });
 
-  await step('files drawer', async () => {
+  // --- new: EDI error report ------------------------------------------------
+  await step('edi errors', async () => {
     await caption(page, '');
-    await click(page, page.getByRole('link', { name: 'FTP Transfers' }), 1500);
-    await caption(page, 'FTP transfers: inbound X12 and outbound TA1 / 997', 'retries, sizes, checksums, archive paths');
+    await click(page, page.getByRole('link', { name: 'Reports' }), 1500);
+    await click(page, page.getByRole('tab', { name: /EDI errors/ }), 2000);
+    await caption(page, '<b>Reports → EDI errors</b>: where EDI is failing, for whom, and why', 'filters: period · producer · transaction type · layer · error code');
+    await sleep(3000);
+    await point(page, page.locator('select').first());
+    await page.locator('select').first().selectOption('1');
+    await caption(page, 'Last 24 hours — the longevity run: 0..10 producers ramping up and down', 'accepted vs rejected per hour, split by the layer that failed (envelope · syntax · business)');
+    await sleep(3500);
+    await scroll(page, 560, { x: 900, y: 560 });
+    await caption(page, 'Errors per producer — worst error rate first', 'rejected interchanges, syntax vs business rejections, top error, open action items');
+    await sleep(3500);
+    await scroll(page, 700);
+    await caption(page, 'Error codes with the X12 acknowledgment the producer sees in its TA1 / 997', 'click a code to filter the whole report');
+    await sleep(2500);
+    await click(page, page.locator('table').nth(1).locator('tbody tr').first(), 1800);
+    await scroll(page, -2000, { x: 900, y: 500 });
+    await caption(page, 'Filtered by one error code: which producers send it, and how often');
+    await sleep(3000);
+    await click(page, page.getByRole('button', { name: /^code:/ }), 1500);
+  });
+
+  await step('drill down', async () => {
+    await scroll(page, 560, { x: 900, y: 560 });
+    await click(page, page.locator('table').first().locator('tbody tr').first(), 2200);
+    await caption(page, 'Drill down into one producer', 'action items by status, errors by code, recent failed interchanges, reports already sent');
+    await sleep(3500);
+    await scroll(page, 600, { x: 1100, y: 560 });
+    await sleep(2000);
+  });
+
+  // --- new: report the failures to the producer ------------------------------
+  await step('report to producer', async () => {
+    await click(page, page.getByRole('button', { name: /^Report \d+ failure/ }), 2500);
+    await caption(page, '<b>Report failures to the producer</b> — a pre-filled exception report e-mail', 'summary by error, the interchanges to fix and resend, and a CSV with one row per issue');
+    await sleep(3500);
+    await point(page, page.getByText(/delivered@resend\.dev/).first());
+    await caption(page, 'Sent through a <b>simulated Resend</b> integration — no e-mail leaves the machine', 'Resend test inboxes work too: bounced@resend.dev, complained@resend.dev');
+    await sleep(3000);
+    await scroll(page, 700, { x: 1100, y: 600 });
+    await caption(page, 'Edit anything before sending — the CSV attachment lists every issue with its X12 code');
+    await sleep(3000);
+    await click(page, page.getByRole('button', { name: 'Send via Resend' }), 2500);
+    await caption(page, 'Sent — the items move to <b>Reported</b>', 'Resend sends delivery events back as Svix-signed webhooks');
+    await sleep(2000);
+  });
+
+  // --- new: action items backlog, the conversation, webhook log ---------------
+  await step('action items', async () => {
+    await caption(page, '');
+    await click(page, page.getByRole('link', { name: /Action Items/ }), 2200);
+    await caption(page, '<b>Action Items</b> — the EDI failure backlog', 'every rejected or failed interchange becomes an item: priority, layer, status, assignee, history');
+    await sleep(3500);
+    await point(page, page.locator('select').nth(2));
+    await page.locator('select').nth(2).selectOption('HIGH');
+    await caption(page, 'Filter: high priority (envelope rejections and system errors)');
+    await sleep(2500);
+    await click(page, page.locator('tbody tr').first(), 2200);
+    await caption(page, 'An action item: the failed interchange, its issues with TA1/997 codes, status and history', 'assign it, add notes, report it to the producer, or resolve it');
+    await sleep(3500);
+    await scroll(page, 600, { x: 1100, y: 560 });
+    await sleep(2000);
+    await page.keyboard.press('Escape');
+    await sleep(800);
+  });
+
+  await step('conversation', async () => {
+    await click(page, page.getByRole('tab', { name: /Producer reports/ }), 1800);
+    await caption(page, 'Producer reports: every exception report sent, its e-mail status and the replies');
+    await sleep(2500);
+    await click(page, page.locator('tbody tr').first(), 2500);
+    await caption(page, 'Delivery tracked through webhooks: <b>sent → delivered → opened</b>', 'every webhook is signature-checked (svix-id / svix-timestamp / svix-signature)');
+    await sleep(4500);
+    await click(page, page.getByRole('button', { name: /^Reply as/ }), 1500);
+    await caption(page, 'The producer replies… it arrives as an <b>email.received</b> webhook', 'threaded to the report by its reply-to address → items move to <b>Producer replied</b>');
+    await sleep(5000);
+    await scroll(page, 500, { x: 1100, y: 500 });
     await sleep(1500);
-    await click(page, page.getByRole('button', { name: 'View' }).first(), 1800);
-    await caption(page, 'File details open in a drawer — the raw X12 exactly as received');
+    await click(page, page.getByRole('button', { name: /From an unknown sender/ }), 1500);
+    await caption(page, 'Now an e-mail from someone who is <b>not</b> the producer\'s EDI contact…', 'inbound e-mail is untrusted input');
     await sleep(3500);
     await page.keyboard.press('Escape');
     await sleep(800);
   });
 
-  await step('validation', async () => {
-    await caption(page, '');
-    await click(page, page.getByRole('link', { name: 'Validation' }), 1800);
-    await caption(page, 'Validation explorer: where partners’ data-quality problems are', 'by level (interchange, group, transaction, segment, element, business) and by code');
-    await scroll(page, 600, { x: 900, y: 520 });
-    await sleep(2000);
+  await step('webhooks', async () => {
+    await click(page, page.getByRole('tab', { name: /E-mail/ }), 1800);
+    await caption(page, 'The Resend integration: sending domain, inbound address, webhook endpoint and signing secret');
+    await sleep(3000);
+    await scroll(page, 420, { x: 900, y: 600 });
+    await caption(page, '…was <b>quarantined</b>: kept and flagged, never linked to a report or acted upon', 'only replies from the registered contact that thread to a report we sent are trusted');
+    await sleep(4000);
+    await click(page, page.getByRole('tab', { name: /Webhook log/ }), 1500);
+    await caption(page, 'Webhook audit log', 'every delivery with its signature check and outcome — duplicates are ignored by svix-id');
+    await sleep(3500);
   });
 
-  await step('notifications', async () => {
+  // --- producers, inventory, customers ----------------------------------------
+  await step('producers', async () => {
     await caption(page, '');
-    await click(page, page.getByRole('link', { name: /Notifications/ }), 1800);
-    await caption(page, 'Notifications delivered by RabbitMQ', 'EDI failures from <b>edi.events</b> and order events from the order app');
-    await sleep(3500);
+    await click(page, page.getByRole('link', { name: 'Producers' }), 1800);
+    await caption(page, 'Producers — cards or a data table, with filters and pagination', 'each fictional farm with its generated logo, ISA ID, acceptance rate and FTP activity');
+    await sleep(2500);
+    await click(page, page.getByRole('button', { name: 'Table' }), 2000);
+    await point(page, page.locator('select').nth(4));
+    await page.locator('select').nth(4).selectOption('acceptance');
+    await caption(page, 'Sorted by acceptance rate — lowest first');
+    await sleep(3000);
   });
 
   await step('inventory', async () => {
     await caption(page, '');
     await click(page, page.getByRole('link', { name: 'Inventory' }), 1800);
     await caption(page, 'Inventory loaded by EDI', '100 farm products — cost from the 832, quantity from the 846 / 856, sell price with markup');
-    await sleep(2500);
+    await sleep(2200);
     await click(page, page.locator('tbody tr').first(), 2200);
-    await caption(page, 'Traceability: every stock change links back to its X12 transaction and envelope');
-    await scroll(page, 500, { x: 900, y: 520 });
-    await sleep(3000);
+    await scroll(page, 520, { x: 900, y: 520 });
+    await caption(page, 'Traceability: every stock change links back to its X12 transaction and envelope', 'paginated ledger with filters by movement type and source');
+    await sleep(3500);
   });
 
-  await step('billing', async () => {
+  await step('customers', async () => {
     await caption(page, '');
-    await click(page, page.getByRole('link', { name: 'Billing' }), 1800);
+    await click(page, page.getByRole('link', { name: 'Customers' }), 1800);
     await caption(page, 'Customers, orders and Net-30 bills replicated from the order app via RabbitMQ');
-    await sleep(3000);
-  });
-
-  await step('kpis', async () => {
-    await caption(page, '');
-    await click(page, page.getByRole('link', { name: /KPIs/ }), 2000);
-    await caption(page, 'KPIs & observability', 'each KPI with its definition · Prometheus metrics on :4000/metrics');
-    await scroll(page, 900, { x: 900, y: 520 });
-    await sleep(1500);
-    await scroll(page, 900);
-    await sleep(1500);
+    await sleep(2500);
+    await click(page, page.getByRole('link', { name: 'Orders' }), 1800);
+    await caption(page, 'Orders with filters: status, customer, period, total range and sort');
+    await sleep(2500);
+    await click(page, page.getByRole('link', { name: 'Billing' }), 1800);
+    await caption(page, 'Bills: overdue, due in 7 / 30 days, customer, amount range');
+    await sleep(2500);
   });
 
   await step('platform', async () => {
     await caption(page, '');
-    await click(page, page.getByRole('link', { name: 'FTP Cluster' }), 2200);
-    await caption(page, '<b>Platform</b> · FTP cluster: load balancer + 3 nodes on a shared volume', 'node status, load-balancer state, traffic and sessions per node, Prometheus alerts, recovery timeline');
+    await click(page, page.getByRole('link', { name: 'FTP Platform' }), 2200);
+    await caption(page, '<b>Platform</b> · FTP cluster: load balancer + 3 nodes on a shared volume', 'tabs: nodes · metrics · recovery timeline · alerts · notifications');
     await sleep(3500);
     await click(page, page.getByRole('button', { name: 'Actions for ftp-node-2' }), 900);
     await click(page, page.getByRole('menuitem', { name: /Simulate failure/ }), 1500);
@@ -465,21 +517,25 @@ async function distributor(page: Page) {
     await sleep(7000);
     await caption(page, '…removes it and spawns a <b>new node</b> on the same shared volume → <b>READY</b>', 'generation 2 · recovery time measured · producers kept delivering through the load balancer');
     await sleep(8000);
-    await scroll(page, 700, { x: 900, y: 520 });
+    await click(page, page.getByRole('tab', { name: /Metrics/ }), 2000);
     await caption(page, 'Traffic and sessions per node, probe latency — the dip is the outage');
     await sleep(3500);
-    await scroll(page, 800);
-    await caption(page, 'Recovery timeline, Prometheus alerts (firing → resolved) and platform notifications');
-    await sleep(4500);
+    await click(page, page.getByRole('tab', { name: /Recovery timeline/ }), 1500);
+    await caption(page, 'Recovery timeline — paginated, filter by node, event type or severity');
+    await sleep(3500);
+    await click(page, page.getByRole('tab', { name: /Alerts/ }), 1500);
+    await caption(page, 'Prometheus alerts (firing → resolved) and scrape targets');
+    await sleep(3000);
   });
 
   await step('storage', async () => {
     await caption(page, '');
-    await click(page, page.getByRole('link', { name: 'Storage' }), 2000);
+    await click(page, page.getByRole('link', { name: /^Storage/ }), 2000);
     await caption(page, 'Shared storage per producer', 'fresh (waiting in to_distributor), archived, acks waiting, errors, bytes and 24h traffic');
     await sleep(3000);
-    await scroll(page, 600, { x: 900, y: 520 });
-    await sleep(2500);
+    await click(page, page.getByRole('tab', { name: /Charts/ }), 1500);
+    await caption(page, 'Files per producer by folder, and files on the volume over time');
+    await sleep(3000);
   });
 
   await step('inspector', async () => {
@@ -490,7 +546,7 @@ async function distributor(page: Page) {
     await click(page, page.getByRole('button', { name: 'Inspect' }), 2200);
     await caption(page, 'Every problem located by segment and element, with its 997 code');
     await scroll(page, 700, { x: 900, y: 520 });
-    await sleep(3500);
+    await sleep(3000);
   });
   await caption(page, '<b>Harvest Hub</b> · EDI Control Center', 'next → the customer storefront');
   await sleep(2500);

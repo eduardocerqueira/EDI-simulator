@@ -12,7 +12,7 @@ export async function seed() {
     update: {},
   });
   for (const p of PRODUCERS) {
-    const data = { code: p.code, name: p.name, isaQualifier: p.isaQualifier, isaId: p.isaId, gsCode: p.gsCode, ftpUser: p.ftpUser, specialty: p.specialty, city: p.city, state: p.state };
+    const data = { code: p.code, name: p.name, isaQualifier: p.isaQualifier, isaId: p.isaId, gsCode: p.gsCode, ftpUser: p.ftpUser, specialty: p.specialty, city: p.city, state: p.state, contactName: p.contactName, contactEmail: p.contactEmail };
     // keyed by the stable partner code, so renamed partners (new ISA ID / FTP user) are updated in place
     await prisma.tradingPartner.upsert({ where: { code: p.code }, create: data, update: data });
   }

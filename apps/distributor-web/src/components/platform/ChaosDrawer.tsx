@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Pause, Skull, Zap } from 'lucide-react';
+import { Loader2, Pause, Skull, Zap } from '@edi/ui/icons';
 import { Button } from '@edi/ui/components/button';
 import { Drawer, DrawerBody, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from '@edi/ui/components/drawer';
 import { toast } from '@edi/ui/components/sonner';
@@ -69,20 +69,20 @@ export function ChaosDrawer({ open, onOpenChange, node }: { open: boolean; onOpe
                 type="button"
                 onClick={() => setMode(m.mode)}
                 className={cn(
-                  'cursor-pointer rounded-xl border p-4 text-left transition-colors',
+                  'cursor-pointer rounded-none border p-4 text-left transition-colors',
                   mode === m.mode ? 'border-primary bg-primary/5 ring-primary/30 ring-2' : 'hover:bg-muted/50',
                 )}
               >
                 <div className="flex items-center gap-2 font-medium">
                   <m.icon className="size-4" /> {m.title}
-                  <code className="bg-muted ml-auto rounded px-1.5 py-0.5 font-mono text-xs">{m.what}</code>
+                  <code className="bg-muted ml-auto rounded-none px-1.5 py-0.5 font-mono text-xs">{m.what}</code>
                 </div>
                 <p className="text-muted-foreground mt-2 text-sm">{m.how}</p>
                 <p className="mt-2 text-xs">{m.expect}</p>
               </button>
             ))}
           </div>
-          <div className="bg-muted/50 text-muted-foreground rounded-lg border p-3 text-xs">
+          <div className="bg-muted/50 text-muted-foreground rounded-none border p-3 text-xs">
             Same as the CLI: <code className="font-mono">npm run chaos:ftp -- {node ? `--node ${node.slot} ` : ''}--mode {mode}</code>
           </div>
         </DrawerBody>

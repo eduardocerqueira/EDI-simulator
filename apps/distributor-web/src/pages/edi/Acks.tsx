@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { Eye } from 'lucide-react';
+import { Eye } from '@edi/ui/icons';
 import { Badge } from '@edi/ui/components/badge';
 import { Button } from '@edi/ui/components/button';
 import { Card, CardContent } from '@edi/ui/components/card';
@@ -35,14 +35,14 @@ export function AcksPage() {
         <Card className="py-4">
           <CardContent className="px-4 text-sm">
             <div className="mb-1 font-semibold">TA1 — Interchange Acknowledgment</div>
-            <code className="bg-muted block rounded p-2 font-mono text-xs">TA1*000001234*261125*1430*R*001~</code>
+            <code className="bg-muted block rounded-none p-2 font-mono text-xs">TA1*000001234*261125*1430*R*001~</code>
             <p className="text-muted-foreground mt-2 text-xs">TA101 = original ISA13 · TA102/03 = original date/time · TA104 = A/E/R · TA105 = note code (001 = ICN mismatch, 006 = invalid sender, 025 = duplicate…)</p>
           </CardContent>
         </Card>
         <Card className="py-4">
           <CardContent className="px-4 text-sm">
             <div className="mb-1 font-semibold">997 — Functional Acknowledgment</div>
-            <code className="bg-muted block rounded p-2 font-mono text-xs whitespace-pre">{'AK1*IB*1235~  AK2*846*0001~\nAK3*LIN*7*LIN*8~  AK4*2*235*7*XX~\nAK5*R*5~  AK9*R*1*1*0~'}</code>
+            <code className="bg-muted block rounded-none p-2 font-mono text-xs whitespace-pre">{'AK1*IB*1235~  AK2*846*0001~\nAK3*LIN*7*LIN*8~  AK4*2*235*7*XX~\nAK5*R*5~  AK9*R*1*1*0~'}</code>
             <p className="text-muted-foreground mt-2 text-xs">AK1 = group acknowledged · AK2 = transaction set · AK3 = bad segment · AK4 = bad element · AK5 = set verdict · AK9 = group verdict</p>
           </CardContent>
         </Card>

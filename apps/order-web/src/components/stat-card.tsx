@@ -1,4 +1,4 @@
-import type { LucideIcon } from 'lucide-react';
+import type { LucideIcon } from '@edi/ui/icons';
 import type { ReactNode } from 'react';
 import { Card, CardContent } from '@edi/ui/components/card';
 import { Skeleton } from '@edi/ui/components/skeleton';
@@ -27,7 +27,7 @@ export function StatCard({ label, value, hint, icon: Icon, tone = 'primary', loa
           {loading ? <Skeleton className="mt-2 h-7 w-24" /> : <p className="mt-1.5 truncate text-2xl font-semibold tabular-nums">{value}</p>}
           {hint && <div className="text-muted-foreground mt-1 text-xs">{hint}</div>}
         </div>
-        <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', tones[tone])}>
+        <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-none', tones[tone])}>
           <Icon className="size-5" />
         </div>
       </CardContent>

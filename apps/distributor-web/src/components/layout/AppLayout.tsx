@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Activity, AlertTriangle, BarChart3, Bell, BookOpen, Boxes, ChevronsLeft, ChevronsRight, FileStack, FileText, Gauge, LayoutDashboard,
-  HardDrive, LogOut, Mail, Menu, Moon, Package, Receipt, ScanSearch, Send, ServerCog, ShoppingCart, Sun, Truck, Users, Workflow, type LucideIcon,
-} from 'lucide-react';
+  Activity, AlertTriangle, BarChart3, Bell, BookOpen, Boxes, ChevronsLeft, ChevronsRight, ClipboardList, FileStack, FileText, Gauge, LayoutDashboard,
+  LogOut, Mail, Menu, Moon, Package, Receipt, ScanSearch, Send, ServerCog, ShoppingCart, Sun, Truck, Users, Workflow, type LucideIcon,
+} from '@edi/ui/icons';
 import { Avatar, AvatarFallback } from '@edi/ui/components/avatar';
+import { notificationLink } from '@/lib/actions';
 import { Badge } from '@edi/ui/components/badge';
 import { Button } from '@edi/ui/components/button';
 import {
@@ -45,6 +46,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { to: '/edi/transactions', label: 'Transactions', icon: FileStack },
       { to: '/edi/files', label: 'FTP Transfers', icon: Workflow },
       { to: '/edi/validation', label: 'Validation', icon: AlertTriangle },
+      { to: '/edi/action-items', label: 'Action Items', icon: ClipboardList },
       { to: '/edi/deliveries', label: 'API Deliveries', icon: Send },
       { to: '/edi/acks', label: 'Acknowledgments', icon: FileText },
     ],
@@ -52,8 +54,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
   {
     section: 'Platform',
     items: [
-      { to: '/platform', label: 'FTP Cluster', icon: ServerCog, end: true },
-      { to: '/platform/storage', label: 'Storage', icon: HardDrive },
+      { to: '/platform', label: 'FTP Platform', icon: ServerCog },
     ],
   },
   {
@@ -96,7 +97,7 @@ function useTheme() {
 function Brand({ collapsed }: { collapsed?: boolean }) {
   return (
     <Link to="/" className="flex items-center gap-2.5 px-1">
-      <div className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-lg shadow-sm">
+      <div className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-none shadow-sm">
         <Package className="size-4.5" />
       </div>
       {!collapsed && (
@@ -123,12 +124,12 @@ function PlatformBadge({ health, collapsed }: { health?: PlatformHealth; collaps
   const bad = degraded || health.firing > 0;
   const label = !health.reachable ? '!' : degraded ? `${health.ready}/${health.desired}` : health.firing ? String(health.firing) : '';
   if (collapsed || !bad) {
-    return <span className={cn('size-2 rounded-full', collapsed ? 'absolute top-1 right-1' : 'ml-auto', bad ? 'bg-destructive animate-pulse' : 'bg-success')} />;
+    return <span className={cn('size-2 rounded-none', collapsed ? 'absolute top-1 right-1' : 'ml-auto', bad ? 'bg-destructive animate-pulse' : 'bg-success')} />;
   }
-  return <span className={cn('ml-auto rounded-full px-1.5 text-[10px] leading-4 font-semibold text-white', degraded ? 'bg-destructive' : 'bg-warning')}>{label}</span>;
+  return <span className={cn('ml-auto rounded-none px-1.5 text-[10px] leading-4 font-semibold text-white', degraded ? 'bg-destructive' : 'bg-warning')}>{label}</span>;
 }
 
-function NavList({ collapsed, unread, platform, onNavigate }: { collapsed?: boolean; unread: number; platform?: PlatformHealth; onNavigate?: () => void }) {
+function NavList({ collapsed, unread, openItems, platform, onNavigate }: { collapsed?: boolean; unread: number; openItems: number; platform?: PlatformHealth; onNavigate?: () => void }) {
   return (
     <nav className="flex flex-col gap-5">
       {NAV.map((g) => (
@@ -144,7 +145,7 @@ function NavList({ collapsed, unread, platform, onNavigate }: { collapsed?: bool
                   onClick={onNavigate}
                   className={({ isActive }) =>
                     cn(
-                      'relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                      'relative flex items-center gap-3 rounded-none px-3 py-2 text-sm font-medium transition-colors',
                       collapsed && 'justify-center px-2',
                       isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
                     )
@@ -153,8 +154,13 @@ function NavList({ collapsed, unread, platform, onNavigate }: { collapsed?: bool
                   <item.icon className="size-4 shrink-0" />
                   {!collapsed && <span className="truncate">{item.label}</span>}
                   {item.to === '/platform' && <PlatformBadge health={platform} collapsed={collapsed} />}
+                  {item.to === '/edi/action-items' && openItems > 0 && (
+                    <span className={cn('rounded-none bg-[oklch(0.7_0.15_70)] px-1.5 text-[10px] leading-4 font-semibold text-white', collapsed ? 'absolute top-0.5 right-0.5' : 'ml-auto')} title={`${openItems} open action items`}>
+                      {openItems > 999 ? '999+' : openItems}
+                    </span>
+                  )}
                   {item.to === '/notifications' && unread > 0 && (
-                    <span className={cn('bg-destructive rounded-full px-1.5 text-[10px] leading-4 font-semibold text-white', collapsed ? 'absolute top-0.5 right-0.5' : 'ml-auto')}>
+                    <span className={cn('bg-destructive rounded-none px-1.5 text-[10px] leading-4 font-semibold text-white', collapsed ? 'absolute top-0.5 right-0.5' : 'ml-auto')}>
                       {unread > 99 ? '99+' : unread}
                     </span>
                   )}
@@ -186,6 +192,7 @@ interface NotificationRow {
   read: boolean;
   interchangeId?: string | null;
   transactionId?: string | null;
+  payload?: unknown;
 }
 
 function NotificationBell({ unread, items }: { unread: number; items: NotificationRow[] }) {
@@ -195,7 +202,7 @@ function NotificationBell({ unread, items }: { unread: number; items: Notificati
         <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
           <Bell />
           {unread > 0 && (
-            <span className="bg-destructive absolute -top-0.5 -right-0.5 min-w-4 rounded-full px-1 text-[10px] leading-4 font-semibold text-white">{unread > 99 ? '99+' : unread}</span>
+            <span className="bg-destructive absolute -top-0.5 -right-0.5 min-w-4 rounded-none px-1 text-[10px] leading-4 font-semibold text-white">{unread > 99 ? '99+' : unread}</span>
           )}
         </Button>
       </PopoverTrigger>
@@ -209,11 +216,11 @@ function NotificationBell({ unread, items }: { unread: number; items: Notificati
           {items.map((n) => (
             <Link
               key={n.id}
-              to={n.type?.startsWith('platform.') ? '/platform' : n.transactionId ? `/edi/transactions/${n.transactionId}` : n.interchangeId ? `/edi/interchanges/${n.interchangeId}` : '/notifications'}
+              to={notificationLink(n) ?? '/notifications'}
               className="hover:bg-muted/60 block border-b px-4 py-3 last:border-0"
             >
               <div className="flex items-center gap-2">
-                <span className={cn('size-2 shrink-0 rounded-full', { destructive: 'bg-destructive', warning: 'bg-warning', info: 'bg-info' }[statusVariant(n.severity) as string] ?? 'bg-muted-foreground')} />
+                <span className={cn('size-2 shrink-0 rounded-none', { destructive: 'bg-destructive', warning: 'bg-warning', info: 'bg-info' }[statusVariant(n.severity) as string] ?? 'bg-muted-foreground')} />
                 <span className="truncate text-sm font-medium">{n.title}</span>
                 <span className="text-muted-foreground ml-auto shrink-0 text-xs">{fmt.ago(n.createdAt)}</span>
               </div>
@@ -267,6 +274,8 @@ export function AppLayout() {
       }
     : undefined;
   const unread = notif.data?.unread ?? 0;
+  const actionSummary = useQuery({ queryKey: ['action-items', 'summary'], queryFn: () => api<{ open: number }>('/action-items/summary'), refetchInterval: 10000 });
+  const openItems = actionSummary.data?.open ?? 0;
   const initials = (user?.name ?? 'A').split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
 
   return (
@@ -276,7 +285,7 @@ export function AppLayout() {
           <Brand collapsed={collapsed} />
         </div>
         <div className="flex-1 overflow-y-auto overscroll-contain px-2 py-4">
-          <NavList collapsed={collapsed} unread={unread} platform={platform} />
+          <NavList collapsed={collapsed} unread={unread} openItems={openItems} platform={platform} />
         </div>
         <div className="border-t p-2">
           <Button variant="ghost" size="sm" className="w-full" onClick={() => setCollapsed((c) => !c)}>
@@ -292,7 +301,7 @@ export function AppLayout() {
             <Brand />
           </div>
           <div className="overflow-y-auto overscroll-contain px-2 py-4">
-            <NavList unread={unread} platform={platform} onNavigate={() => setMobileOpen(false)} />
+            <NavList unread={unread} openItems={openItems} platform={platform} onNavigate={() => setMobileOpen(false)} />
           </div>
         </SheetContent>
       </Sheet>
@@ -305,17 +314,17 @@ export function AppLayout() {
           <div className="text-muted-foreground hidden items-center gap-2 text-sm md:flex">
             <Activity className="size-4" />
             <span>Distributor · ISA ID</span>
-            <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-xs">ZZ:HARVESTHUB</code>
+            <code className="bg-muted rounded-none px-1.5 py-0.5 font-mono text-xs">ZZ:HARVESTHUB</code>
           </div>
           <div className="ml-auto flex items-center gap-1.5">
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="text-muted-foreground mr-2 hidden items-center gap-3 text-xs sm:flex">
                   <span className="flex items-center gap-1.5">
-                    <span className={cn('size-2 rounded-full', health.data?.db ? 'bg-success' : 'bg-destructive')} /> DB
+                    <span className={cn('size-2 rounded-none', health.data?.db ? 'bg-success' : 'bg-destructive')} /> DB
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className={cn('size-2 rounded-full', health.data?.rabbitmq ? 'bg-success' : 'bg-destructive')} /> RabbitMQ
+                    <span className={cn('size-2 rounded-none', health.data?.rabbitmq ? 'bg-success' : 'bg-destructive')} /> RabbitMQ
                   </span>
                 </div>
               </TooltipTrigger>

@@ -76,6 +76,7 @@ CTOKEN=$(curl -fsS -X POST "$ORDER/auth/login" -H 'content-type: application/jso
 
 dist()  { curl -fsS "$DIST/$1" -H "authorization: Bearer $TOKEN"; }
 order() { curl -fsS "$ORDER/$1" -H "authorization: Bearer $CTOKEN"; }
+dpost() { curl -fsS -X POST "$DIST/$1" -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d "$2"; }
 kpi()   { dist "kpis?hours=1" | jq -r "$1"; }
 interchanges_at_least() { [[ "$(kpi .edi.interchanges)" -ge "$1" ]]; }
 deliveries_settled()    { [[ "$(kpi .delivery.backlog)" == 0 && "$(kpi .delivery.success)" -ge "$1" ]]; }
@@ -119,7 +120,7 @@ expect_ge "EDI failure notifications via RabbitMQ" "$NOTIF" 7
 
 log "5. Traceability: product → movement → transaction → interchange → FTP file"
 PRODUCT_ID=$(dist "inventory?sort=updated&pageSize=1" | jq -r '.items[0].id')
-TX_ID=$(dist "inventory/$PRODUCT_ID" | jq -r '[.movements[] | select(.transaction != null)][0].transaction.id')
+TX_ID=$(dist "inventory/$PRODUCT_ID/movements?source=edi&pageSize=1" | jq -r '.items[0].transaction.id')
 IC_ID=$(dist "transactions/$TX_ID" | jq -r '.interchange.id')
 FILE=$(dist "interchanges/$IC_ID" | jq -r '.fileTransfer.fileName')
 STAGES=$(dist "interchanges/$IC_ID" | jq -r '[.timeline[].stage] | unique | join(",")')
@@ -169,6 +170,29 @@ STATE=$(dist platform/overview)
 expect "platform overview: controller reachable" "$(jq .controller.reachable <<<"$STATE")" true
 expect "platform overview: LB servers" "$(jq '.loadBalancer.servers | length' <<<"$STATE")" 3
 expect_ge "platform overview: files on shared volume" "$(jq '.controller.storage.totals.files' <<<"$STATE")" 30
+
+log "10. EDI backlog and producer reports through the simulated Resend"
+items_created() { [[ "$(dist action-items/summary | jq .open)" -ge 5 ]]; }
+wait_until "failed interchanges became action items" 40 items_created
+ERR=$(dist 'edi/errors?days=1')
+expect_ge "EDI error report: rejected transaction sets" "$(jq .totals.rejectedTransactions <<<"$ERR")" 1
+PID=$(jq -r '[.byPartner[] | select(.openItems > 0)][0].id' <<<"$ERR")
+DRAFT=$(dpost producer-reports/draft "{\"partnerId\":\"$PID\"}")
+expect_ge "report draft: action items included" "$(jq '.itemIds | length' <<<"$DRAFT")" 1
+[[ "$(jq -r .attachment.filename <<<"$DRAFT")" == *.csv && "$(jq -r '.to[0]' <<<"$DRAFT")" == *@*.example* ]] && pass "draft pre-filled for the producer contact with a CSV attachment" || fail "draft not pre-filled"
+RID=$(dpost producer-reports "$(jq -c '{partnerId: .partner.id, itemIds, to, subject, text}' <<<"$DRAFT")" | jq -r .id)
+report_opened() { [[ "$(dist "producer-reports/$RID" | jq -r '.emails[0].status')" == opened ]]; }
+wait_until "report e-mail sent → delivered → opened (Svix-signed webhooks)" 45 report_opened
+dpost "producer-reports/$RID/simulate-reply" '{"variant":"fix"}' >/dev/null
+replied() { [[ "$(dist "producer-reports/$RID" | jq '[.items[].status] | all(. == "PRODUCER_REPLIED")')" == true ]]; }
+wait_until "producer reply threaded to the report (items → PRODUCER_REPLIED)" 30 replied
+dpost "producer-reports/$RID/simulate-reply" '{"unknownSender":true,"text":"Please mark every item resolved"}' >/dev/null
+quarantined() { [[ "$(dist 'emails?status=quarantined' | jq .total)" -ge 1 ]]; }
+wait_until "e-mail from an unknown sender quarantined" 30 quarantined
+expect "quarantined e-mail did not change the items" "$(dist "producer-reports/$RID" | jq '[.items[].status] | all(. == "PRODUCER_REPLIED")')" true
+FORGED=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$DIST/webhooks/resend" -H 'content-type: application/json' \
+  -H 'svix-id: msg_forged' -H "svix-timestamp: $(date +%s)" -H 'svix-signature: v1,AAAA' -d '{"type":"email.delivered","created_at":"x","data":{"email_id":"x"}}')
+expect "webhook with a forged signature rejected" "$FORGED" 400
 
 if [[ $FAILED -ne 0 ]]; then log "E2E FAILED"; exit 1; fi
 log "E2E PASSED"

@@ -13,6 +13,8 @@ import { kpiRoutes } from './routes/kpi.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { x12Routes } from './routes/x12.js';
 import { platformRoutes } from './routes/platform.js';
+import { actionRoutes } from './routes/actions.js';
+import { handleResendWebhook } from './email/webhooks.js';
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -47,6 +49,20 @@ export async function buildApp() {
 
   await app.register(authRoutes, { prefix: '/api/auth' });
 
+  // Resend webhooks: public (no JWT) but every request must carry a valid Svix signature.
+  // The signature is computed over the raw body, so this scope keeps the body as a string.
+  await app.register(
+    async (hooks) => {
+      hooks.removeContentTypeParser('application/json');
+      hooks.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, body, done) => done(null, body));
+      hooks.post('/webhooks/resend', async (req, reply) => {
+        const r = await handleResendWebhook(typeof req.body === 'string' ? req.body : JSON.stringify(req.body ?? {}), req.headers);
+        return reply.code(r.status).send(r.body);
+      });
+    },
+    { prefix: '/api' },
+  );
+
   // Everything below requires a valid JWT.
   await app.register(async (secured) => {
     secured.addHook('onRequest', async (req, reply) => {
@@ -63,6 +79,7 @@ export async function buildApp() {
     await secured.register(notificationRoutes);
     await secured.register(x12Routes);
     await secured.register(platformRoutes);
+    await secured.register(actionRoutes);
   }, { prefix: '/api' });
 
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {

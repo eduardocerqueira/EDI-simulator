@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertCircle, ChevronRight } from 'lucide-react';
+import { AlertCircle, ChevronRight } from '@edi/ui/icons';
 import { Badge } from '@edi/ui/components/badge';
 import { cn } from '@edi/ui/lib/utils';
 import type { DescribedSegment } from '@/lib/types';
@@ -39,7 +39,7 @@ function SegmentRow({ seg, defaultOpen, relative }: { seg: DescribedSegment; def
   return (
     <div className={cn('border-b last:border-0', errors.length && 'bg-destructive/[0.04]')}>
       <button onClick={() => setOpen((o) => !o)} className="hover:bg-muted/50 flex w-full cursor-pointer items-start gap-3 px-3 py-1.5 text-left">
-        <span className={cn('mt-1 h-4 w-1 shrink-0 rounded-full', style.bar)} />
+        <span className={cn('mt-1 h-4 w-1 shrink-0 rounded-none', style.bar)} />
         <span className="text-muted-foreground w-8 shrink-0 pt-0.5 text-right font-mono text-xs tabular-nums">{relative ?? seg.position}</span>
         <ChevronRight className={cn('text-muted-foreground mt-0.5 size-4 shrink-0 transition-transform', open && 'rotate-90')} />
         <div className="min-w-0 flex-1">
@@ -76,7 +76,7 @@ function SegmentRow({ seg, defaultOpen, relative }: { seg: DescribedSegment; def
               ))}
             </div>
           )}
-          <div className="overflow-x-auto rounded-md border">
+          <div className="overflow-x-auto rounded-none border">
             <table className="bg-background w-full text-xs">
               <thead className="bg-muted/50 text-muted-foreground">
                 <tr>
@@ -96,7 +96,7 @@ function SegmentRow({ seg, defaultOpen, relative }: { seg: DescribedSegment; def
                       <td className="text-muted-foreground px-2 py-1 font-mono">{e.ref ?? '—'}</td>
                       <td className="px-2 py-1">{e.name ?? <span className="text-muted-foreground">Not defined</span>}</td>
                       <td className="px-2 py-1 font-mono">
-                        {e.value === '' ? <span className="text-muted-foreground italic">(empty)</span> : <span className="bg-muted rounded px-1 whitespace-pre">{e.value}</span>}
+                        {e.value === '' ? <span className="text-muted-foreground italic">(empty)</span> : <span className="bg-muted rounded-none px-1 whitespace-pre">{e.value}</span>}
                       </td>
                       <td className="text-muted-foreground px-2 py-1">{e.codeDescription ?? ''}</td>
                     </tr>
@@ -121,7 +121,7 @@ export function SegmentLegend() {
     <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
       {Object.entries(LAYER_STYLE).map(([k, v]) => (
         <span key={k} className="flex items-center gap-1.5">
-          <span className={cn('h-3 w-1 rounded-full', v.bar)} /> {v.label}
+          <span className={cn('h-3 w-1 rounded-none', v.bar)} /> {v.label}
         </span>
       ))}
       <span className="flex items-center gap-1.5">
@@ -139,7 +139,7 @@ export function SegmentViewer({ segments, relativeTo, expandErrors = true }: { s
   return (
     <div className="space-y-3">
       <SegmentLegend />
-      <div className="overflow-hidden rounded-lg border">
+      <div className="overflow-hidden rounded-none border">
         {segments.map((s) => (
           <SegmentRow key={s.position} seg={s} defaultOpen={expandErrors && s.issues?.length > 0} relative={relativeTo ? s.position - relativeTo + 1 : undefined} />
         ))}

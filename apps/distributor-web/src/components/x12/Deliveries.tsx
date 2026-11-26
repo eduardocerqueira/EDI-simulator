@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Send } from 'lucide-react';
+import { Send } from '@edi/ui/icons';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@edi/ui/components/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@edi/ui/components/table';
 import type { ApiDelivery } from '@/lib/types';
@@ -11,7 +11,7 @@ export function DeliveryCard({ d, action }: { d: ApiDelivery; action?: React.Rea
     <Card className="gap-4">
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center gap-2 text-sm">
-          <Send className="size-4" /> POST <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-xs">{d.endpoint}</code>
+          <Send className="size-4" /> POST <code className="bg-muted rounded-none px-1.5 py-0.5 font-mono text-xs">{d.endpoint}</code>
           <StatusBadge status={d.status} />
         </CardTitle>
         <CardDescription>

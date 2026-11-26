@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, CalendarClock, CheckCircle2, FileText, Loader2, ShoppingBasket, Trash2 } from 'lucide-react';
+import { ArrowLeft, CalendarClock, CheckCircle2, FileText, Loader2, ShoppingBasket, Trash2 } from '@edi/ui/icons';
 import { Button } from '@edi/ui/components/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@edi/ui/components/card';
 import { Drawer, DrawerBody, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from '@edi/ui/components/drawer';
@@ -92,7 +92,7 @@ export function CheckoutPage() {
               <Separator />
               <div className="flex justify-between text-base font-semibold"><span>Total</span><span className="tabular-nums">{money(cart.total)}</span></div>
             </div>
-            <div className="bg-muted/50 flex gap-3 rounded-lg border p-3 text-sm">
+            <div className="bg-muted/50 flex gap-3 rounded-none border p-3 text-sm">
               <CalendarClock className="text-primary mt-0.5 size-4 shrink-0" />
               <div>
                 <p className="font-medium">Net 30 terms</p>
@@ -116,13 +116,13 @@ export function CheckoutPage() {
       <Drawer open={!!placed} onOpenChange={(o) => { if (!o) { setPlaced(null); navigate('/orders'); } }}>
         <DrawerContent size="sm">
           <DrawerHeader className="items-center pt-8 text-center">
-            <div className="bg-success/15 text-success mb-2 flex size-14 items-center justify-center rounded-full"><CheckCircle2 className="size-8" /></div>
+            <div className="bg-success/15 text-success mb-2 flex size-14 items-center justify-center rounded-none"><CheckCircle2 className="size-8" /></div>
             <DrawerTitle className="text-xl">Order placed!</DrawerTitle>
             <DrawerDescription>Thank you — your order has been sent to Harvest Hub Distribution.</DrawerDescription>
           </DrawerHeader>
           <DrawerBody>
           {placed && (
-            <div className="grid gap-3 rounded-lg border p-4 text-sm">
+            <div className="grid gap-3 rounded-none border p-4 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">Order number</span><span className="font-mono font-medium">{placed.orderNumber}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-semibold tabular-nums">{money(placed.total)}</span></div>
               {placed.bill && (

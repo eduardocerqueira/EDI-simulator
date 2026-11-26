@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Activity, ExternalLink } from 'lucide-react';
+import { Activity, ExternalLink } from '@edi/ui/icons';
 import { Badge } from '@edi/ui/components/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@edi/ui/components/card';
 import { Progress } from '@edi/ui/components/progress';
@@ -33,7 +33,7 @@ function KpiTile({ k }: { k: KpiDef }) {
         <div className="mt-1 text-2xl font-semibold tabular-nums">{k.value}</div>
         {k.target && <div className="text-muted-foreground text-xs">Target {k.target}</div>}
         <p className="text-muted-foreground mt-2 text-xs">{k.definition}</p>
-        <code className="bg-muted mt-2 block rounded px-2 py-1 font-mono text-[11px]">{k.formula}</code>
+        <code className="bg-muted mt-2 block rounded-none px-2 py-1 font-mono text-[11px]">{k.formula}</code>
       </CardContent>
     </Card>
   );
@@ -93,9 +93,9 @@ export function KpisPage() {
       <Card className="mb-4 py-4">
         <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 text-sm">
           <span className="flex items-center gap-2 font-medium"><Activity className="size-4" /> Health</span>
-          <span className="flex items-center gap-2"><span className={cn('size-2.5 rounded-full', health.data?.db ? 'bg-success' : 'bg-destructive')} /> PostgreSQL</span>
-          <span className="flex items-center gap-2"><span className={cn('size-2.5 rounded-full', health.data?.rabbitmq ? 'bg-success' : 'bg-destructive')} /> RabbitMQ</span>
-          <span className="flex items-center gap-2"><span className={cn('size-2.5 rounded-full', e.filesReceived > 0 ? 'bg-success' : 'bg-muted-foreground')} /> FTP intake {e.filesReceived > 0 ? 'active' : 'idle'}</span>
+          <span className="flex items-center gap-2"><span className={cn('size-2.5 rounded-none', health.data?.db ? 'bg-success' : 'bg-destructive')} /> PostgreSQL</span>
+          <span className="flex items-center gap-2"><span className={cn('size-2.5 rounded-none', health.data?.rabbitmq ? 'bg-success' : 'bg-destructive')} /> RabbitMQ</span>
+          <span className="flex items-center gap-2"><span className={cn('size-2.5 rounded-none', e.filesReceived > 0 ? 'bg-success' : 'bg-muted-foreground')} /> FTP intake {e.filesReceived > 0 ? 'active' : 'idle'}</span>
           <span className="text-muted-foreground ml-auto flex flex-wrap items-center gap-3 text-xs">
             Prometheus metrics: <a className="text-primary inline-flex items-center gap-1 hover:underline" href="http://localhost:4000/metrics" target="_blank" rel="noreferrer">:4000/metrics <ExternalLink className="size-3" /></a>
             RabbitMQ UI: <a className="text-primary inline-flex items-center gap-1 hover:underline" href="http://localhost:15672" target="_blank" rel="noreferrer">:15672 <ExternalLink className="size-3" /></a>
@@ -174,7 +174,7 @@ export function KpisPage() {
               ['edi_acks_sent_total{type,code}', 'TA1 / 997 uploaded'],
               ['mq_messages_published_total{routing_key}', 'RabbitMQ publishes'],
             ].map(([m, d]) => (
-              <div key={m} className="flex items-baseline gap-3 rounded-md border px-3 py-2">
+              <div key={m} className="flex items-baseline gap-3 rounded-none border px-3 py-2">
                 <code className="font-mono text-xs">{m}</code>
                 <span className="text-muted-foreground ml-auto text-xs">{d}</span>
               </div>
