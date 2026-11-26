@@ -27,7 +27,7 @@ const RABBIT = 'http://localhost:15672';
 // ---------------------------------------------------------------------------
 const OVERLAY = `
 (() => {
-  try { if (location.port === '3000' || location.port === '3001') localStorage.setItem('theme', 'dark'); } catch {}
+  try { if (location.port === '3000' || location.port === '3001') localStorage.setItem('theme', 'light'); } catch {}
   const boot = () => {
     if (document.getElementById('__demo_cursor')) return;
     const style = document.createElement('style');
@@ -136,7 +136,7 @@ async function step(name: string, fn: () => Promise<void>) {
 async function record(name: string, scene: (page: Page) => Promise<void>) {
   mkdirSync(RAW, { recursive: true });
   const browser = await chromium.launch();
-  const ctx = await browser.newContext({ viewport: VIEW, recordVideo: { dir: RAW, size: VIEW }, colorScheme: 'dark', deviceScaleFactor: 1 });
+  const ctx = await browser.newContext({ viewport: VIEW, recordVideo: { dir: RAW, size: VIEW }, colorScheme: 'light', deviceScaleFactor: 1 });
   await ctx.addInitScript(OVERLAY);
   const page = await ctx.newPage();
   const started = Date.now();
@@ -155,16 +155,16 @@ async function record(name: string, scene: (page: Page) => Promise<void>) {
 const TERMINAL_HTML = `<!doctype html><html><head><meta charset="utf-8"><title>Terminal</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
-  html, body { margin: 0; height: 100%; background: #0b0f0d; }
-  .win { position: absolute; inset: 28px 36px 110px; background: #111714; border: 1px solid #263029; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.5); display: flex; flex-direction: column; overflow: hidden; }
-  .bar { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #19201c; border-bottom: 1px solid #263029; font: 500 13px Inter, sans-serif; color: #9fb3a6; }
+  html, body { margin: 0; height: 100%; background: #eef2f6; }
+  .win { position: absolute; inset: 28px 36px 110px; background: #ffffff; border: 1px solid #d5dde5; border-radius: 12px; box-shadow: 0 20px 50px rgba(15,23,42,.12); display: flex; flex-direction: column; overflow: hidden; }
+  .bar { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #f3f5f8; border-bottom: 1px solid #e2e8f0; font: 500 13px Inter, sans-serif; color: #64748b; }
   .dot { width: 12px; height: 12px; border-radius: 50%; } .bar .t { margin-left: 12px; }
-  #out { flex: 1; overflow-y: auto; padding: 16px 20px 24px; font: 15px/1.5 'JetBrains Mono', ui-monospace, Menlo, monospace; color: #d7e3db; white-space: pre-wrap; word-break: break-word; }
+  #out { flex: 1; overflow-y: auto; padding: 16px 20px 24px; font: 15px/1.5 'JetBrains Mono', ui-monospace, Menlo, monospace; color: #1e293b; white-space: pre-wrap; word-break: break-word; }
   #out::-webkit-scrollbar { width: 0; }
-  .p { color: #4ade80; font-weight: 600; } .path { color: #60a5fa; } .cmd { color: #fff; }
-  .caret { display: inline-block; width: 9px; height: 18px; background: #4ade80; vertical-align: -3px; animation: b 1s steps(1) infinite; }
+  .p { color: #16a34a; font-weight: 600; } .path { color: #2563eb; } .cmd { color: #0f172a; font-weight: 600; }
+  .caret { display: inline-block; width: 9px; height: 18px; background: #16a34a; vertical-align: -3px; animation: b 1s steps(1) infinite; }
   @keyframes b { 50% { opacity: 0 } }
-  .b { font-weight: 700; } .d { opacity: .6; } .c31 { color: #f87171; } .c32 { color: #4ade80; } .c33 { color: #facc15; } .c34 { color: #60a5fa; } .c35 { color: #e879f9; } .c36 { color: #22d3ee; }
+  .b { font-weight: 700; } .d { opacity: .55; } .c31 { color: #dc2626; } .c32 { color: #15803d; } .c33 { color: #b45309; } .c34 { color: #2563eb; } .c35 { color: #a21caf; } .c36 { color: #0e7490; }
 </style></head><body>
 <div class="win"><div class="bar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span><span class="t">~/EDI-simulator — zsh</span></div><div id="out"></div></div>
 <script>
@@ -233,47 +233,63 @@ function background(command: string) {
 // Scene 1 — Infrastructure
 // ---------------------------------------------------------------------------
 async function infra(page: Page) {
+  const clear = () => page.evaluate(() => (window as unknown as { term: { clear: () => void } }).term.clear());
   await goto(page, await terminalUrl(), 600);
-  await caption(page, '<b>EDI Simulator</b> · Infrastructure', 'Producers ⇄ FTP ⇄ Distributor ⇄ REST ⇄ Order app, with RabbitMQ events — all local with Docker Compose');
+  await caption(page, '<b>EDI Simulator</b> · Infrastructure', 'Producers ⇄ FTP cluster ⇄ Distributor ⇄ REST ⇄ Order app, with RabbitMQ events and Prometheus — all local with Docker Compose');
   await sleep(3500);
 
-  await caption(page, 'Postgres, RabbitMQ, an HA FTP cluster (load balancer + 3 nodes + self-healing controller), Prometheus and two apps', 'started with <b>docker compose up -d --build</b>');
-  await run(page, `docker compose ps --format 'table {{.Service}}\\t{{.Image}}\\t{{.Status}}'`, { pauseAfter: 3500 });
+  await caption(page, 'Postgres, RabbitMQ, an <b>HA FTP cluster</b>, a self-healing controller, Prometheus and two apps', 'started with <b>docker compose up -d --build</b>');
+  await run(page, `docker compose ps --format 'table {{.Service}}\t{{.Image}}\t{{.Status}}'`, { pauseAfter: 4000 });
 
-  await caption(page, 'The FTP server is built from <b>infra/ftp/Containerfile</b> (vsftpd)', 'the distributor login sees one mailbox per trading partner');
+  await clear();
+  await caption(page, 'FTP is a cluster: an <b>HAProxy load balancer</b> (ftp:21) in front of 3 vsftpd nodes', 'every node mounts the same <b>shared storage volume</b> with one mailbox per producer');
   await run(page, 'curl -s --user distributor:distributor123 ftp://localhost/', { pauseAfter: 2500 });
   await caption(page, 'Each producer is chrooted to its own mailbox', '<b>to_distributor</b> = inbound X12 · <b>from_distributor</b> = TA1/997 acks · <b>archive</b> · <b>error</b>');
-  await run(page, 'curl -s --user zephyrwood:producer123 ftp://localhost/', { pauseAfter: 3000 });
+  await run(page, 'curl -s --user zephyrwood:producer123 ftp://localhost/', { pauseAfter: 2800 });
 
-  await page.evaluate(() => (window as unknown as { term: { clear: () => void } }).term.clear());
-  await caption(page, '<b>sim:producers</b> — 10 farm producers send 832 / 846 / 856 over FTP', '<b>--bootstrap</b> sends a catalog per producer first; <b>-b 0.4</b> injects bad data into 40% of the rest');
-  await run(page, 'npm run -s sim:producers -- --bootstrap -n 8 -b 0.4 -i 120', { pauseAfter: 5500 });
+  await clear();
+  await caption(page, '<b>sim:producers</b> — 10 fictional farms send 832 / 846 / 856 over FTP', '<b>--bootstrap</b> sends a catalog per producer first; <b>-b 0.4</b> injects bad data into 40% of the rest');
+  await run(page, 'npm run -s sim:producers -- --bootstrap -n 8 -b 0.4 -i 120', { pauseAfter: 5000 });
 
-  await page.evaluate(() => (window as unknown as { term: { clear: () => void } }).term.clear());
-  await caption(page, 'The distributor polls FTP every 5s, validates every envelope and acknowledges it', 'accepted → ingested and pushed to the order app as JSON · rejected → TA1 / 997 with the X12 error code');
-  await run(page, `docker compose logs distributor-api --no-log-prefix 2>&1 | grep pipeline | tail -12 | cut -c26-`, { pauseAfter: 5000 });
+  await clear();
+  await caption(page, 'The load balancer spreads the sessions across the three nodes', 'each node owns a passive port range, so FTP data connections reach the node holding the session');
+  await run(page, `docker compose logs ftp-node-1 ftp-node-2 ftp-node-3 2>&1 | grep -oE 'ftp-node-[0-9]+.*OK (UPLOAD|DOWNLOAD)' | awk '{print $1, $NF}' | sort | uniq -c`, { pauseAfter: 3500 });
+  await caption(page, 'The distributor validates every envelope and acknowledges it', 'accepted → ingested and pushed to the order app as JSON · rejected → TA1 / 997 with the X12 error code');
+  await run(page, `docker compose logs distributor-api --no-log-prefix 2>&1 | grep pipeline | tail -10 | cut -c26-`, { pauseAfter: 4500 });
 
-  await caption(page, 'Acknowledgments travel back over FTP', '<b>sim:acks</b> downloads the TA1 / 997 the distributor left in each producer mailbox');
-  await run(page, 'npm run -s sim:acks -- -p ZEPHYRWOOD,PEBBLEWING', { pauseAfter: 3500 });
-  await caption(page, 'A 997 Functional Acknowledgment', 'AK1 group · AK2 transaction set · AK5 accept/reject · AK9 group verdict');
-  await run(page, `cat "$(ls -t simulator-output/acks/997_* | head -1)"`, { pauseAfter: 4500 });
+  await clear();
+  await caption(page, '<b>Chaos test</b>: freeze an FTP node — it still accepts TCP but never answers', 'the platform controller detects it, spawns a new node on the shared volume, and FTP keeps working through the load balancer');
+  await run(page, 'npm run -s chaos:ftp -- --node 2', { pauseAfter: 6500 });
+
+  // HAProxy + Prometheus
+  await caption(page, '');
+  await goto(page, 'http://localhost:8404/;norefresh', 800);
+  await caption(page, '<b>HAProxy</b> stats: the three FTP nodes behind <b>ftp:21</b> and their passive port backends', 'health check = the node must send its FTP "220" greeting · http://localhost:8404');
+  await sleep(4500);
+  await scroll(page, 400, { x: 720, y: 500 });
+  await sleep(2000);
+  await goto(page, 'http://localhost:9090/graph?g0.expr=ftp_node_up&g0.tab=0&g0.range_input=2m&g1.expr=ftp_cluster_ready_nodes&g1.tab=0&g1.range_input=2m', 1500);
+  await caption(page, '<b>Prometheus</b> saw ftp-node-2 go down and the new node come back', 'ftp_node_up per node and ftp_cluster_ready_nodes — scraped every 5s from the controller and HAProxy');
+  await sleep(5000);
+  await goto(page, 'http://localhost:9090/alerts', 1200);
+  await caption(page, 'Alert rules: node down, cluster degraded, LB backend down, inbox backlog, storage full', 'firing and resolved alerts become platform notifications in the distributor (via RabbitMQ)');
+  await sleep(4500);
 
   // RabbitMQ
   await caption(page, '');
   background('npm run -s sim:producers -- -n 24 -b 0.3 -i 700 >/dev/null 2>&1; npm run -s sim:customers -- -c 5 -o 8 -i 900 >/dev/null 2>&1');
   await goto(page, RABBIT, 800);
-  await caption(page, '<b>RabbitMQ</b> carries notifications and order events', 'management UI on :15672');
+  await caption(page, '<b>RabbitMQ</b> carries notifications, order events and platform events', 'management UI on :15672');
   await step('rabbit login', async () => {
     await typeInto(page, page.locator('input[name="username"]'), 'edi');
     await typeInto(page, page.locator('input[name="password"]'), 'edi');
     await click(page, page.locator('input[type="submit"], button[type="submit"]').first(), 2500);
   });
   await caption(page, 'Live message rates while the simulator keeps sending files', 'publish / deliver / ack per second');
-  await scroll(page, 300, { x: 720, y: 500 });
-  await sleep(4000);
+  await sleep(3500);
   await step('exchanges', async () => {
     await click(page, page.getByRole('link', { name: 'Exchanges', exact: true }), 1500);
-    await caption(page, 'Topic exchanges: <b>edi.events</b> (distributor) and <b>order.events</b> (order app)', 'plus a <b>dlx</b> dead-letter exchange');
+    await caption(page, 'Topic exchanges: <b>edi.events</b>, <b>order.events</b> and <b>platform.events</b>', 'plus a <b>dlx</b> dead-letter exchange');
     await sleep(2500);
     await click(page, page.getByRole('link', { name: 'edi.events', exact: true }), 1800);
     await click(page, page.getByText('Bindings', { exact: true }).first(), 1200);
@@ -282,18 +298,10 @@ async function infra(page: Page) {
     await sleep(3500);
   });
   await step('queues', async () => {
+    await caption(page, '');
     await click(page, page.getByRole('link', { name: /Queues/ }).first(), 1800);
-    await caption(page, 'Queues and consumers', 'the distributor consumes notifications and the order events it replicates (customers, orders, bills)');
+    await caption(page, 'Queues and consumers', 'notifications · order replica · <b>distributor.platform</b> (FTP cluster events) · audit');
     await sleep(4500);
-    await click(page, page.getByRole('link', { name: 'audit.all', exact: true }), 1800);
-    await caption(page, 'Peek at a message on the audit queue');
-    await scroll(page, 700, { x: 720, y: 500 });
-    const getHeader = page.getByText('Get messages', { exact: true }).first();
-    await click(page, getHeader, 800);
-    await click(page, page.locator('input[type="submit"][value*="Get Message"]').first(), 1500);
-    await scroll(page, 450, { x: 720, y: 500 });
-    await caption(page, 'Every event is plain JSON with its routing key', 'order.* / bill.* / customer.* from the order app · edi.* from the distributor');
-    await sleep(5000);
   });
   await caption(page, 'Next → the <b>Distributor</b> EDI Control Center and the <b>Order app</b>');
   await sleep(3000);
@@ -440,6 +448,38 @@ async function distributor(page: Page) {
     await sleep(1500);
     await scroll(page, 900);
     await sleep(1500);
+  });
+
+  await step('platform', async () => {
+    await caption(page, '');
+    await click(page, page.getByRole('link', { name: 'FTP Cluster' }), 2200);
+    await caption(page, '<b>Platform</b> · FTP cluster: load balancer + 3 nodes on a shared volume', 'node status, load-balancer state, traffic and sessions per node, Prometheus alerts, recovery timeline');
+    await sleep(3500);
+    await click(page, page.getByRole('button', { name: 'Actions for ftp-node-2' }), 900);
+    await click(page, page.getByRole('menuitem', { name: /Simulate failure/ }), 1500);
+    await caption(page, 'Simulate a failure: <b>freeze</b> ftp-node-2 (it hangs) or <b>crash</b> it', 'same as <b>npm run chaos:ftp</b>');
+    await sleep(2500);
+    await click(page, page.getByRole('button', { name: /Freeze ftp-node-2/ }), 1500);
+    await moveTo(page, 720, 420, 20);
+    await caption(page, 'ftp-node-2 stops answering → <b>SUSPECT</b> → the controller declares it down…', 'the load balancer already takes it out of rotation; Prometheus alerts fire');
+    await sleep(7000);
+    await caption(page, '…removes it and spawns a <b>new node</b> on the same shared volume → <b>READY</b>', 'generation 2 · recovery time measured · producers kept delivering through the load balancer');
+    await sleep(8000);
+    await scroll(page, 700, { x: 900, y: 520 });
+    await caption(page, 'Traffic and sessions per node, probe latency — the dip is the outage');
+    await sleep(3500);
+    await scroll(page, 800);
+    await caption(page, 'Recovery timeline, Prometheus alerts (firing → resolved) and platform notifications');
+    await sleep(4500);
+  });
+
+  await step('storage', async () => {
+    await caption(page, '');
+    await click(page, page.getByRole('link', { name: 'Storage' }), 2000);
+    await caption(page, 'Shared storage per producer', 'fresh (waiting in to_distributor), archived, acks waiting, errors, bytes and 24h traffic');
+    await sleep(3000);
+    await scroll(page, 600, { x: 900, y: 520 });
+    await sleep(2500);
   });
 
   await step('inspector', async () => {
