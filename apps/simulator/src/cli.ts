@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { parseArgs } from 'node:util';
+import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { DISTRIBUTOR, PRODUCERS } from '@edi/shared';
 import { analyzeInterchange, describeAckCode, inspectionReport } from '@edi/x12';
 import { runCustomers } from './customers.js';
+import { parseRamp, runLongevity } from './longevity.js';
 import { fetchAcks, listScenarios, resolveProducers, runProducers } from './producers.js';
 import type { SupportedType } from './generators.js';
 import { c } from './term.js';
@@ -25,11 +26,22 @@ ${c.bold('producers options')}
   -t, --types <list>       832,846,856 (default all)
   -p, --producers <x>      number of random producers or ISA IDs list (default all 10)
   -i, --interval <ms>      pause between files (default 300)
+  -d, --delay <sec>        random pause of 0..sec seconds between files instead of --interval
       --bootstrap          first send a valid 832 catalog from every selected producer
   -s, --scenario <ID>      force one scenario for every transaction (see "scenarios")
       --usage <T|P>        ISA15 usage indicator (default T)
       --dry-run            only write files locally, no FTP
       --out <dir>          output folder (default ./simulator-output)
+
+${c.bold('longevity / soak test')} (sim:producers with any of these options)
+      --ramp <min,max>     active producers ramp up and down at random between min and max (e.g. 0,10)
+      --runs <N>           total files to send (e.g. 3000)
+      --duration <min>     run time in minutes; with --runs the delay adapts to send ~N files in that time
+  -d, --delay <sec>        cap for the random pause between two files of the same producer
+                           (default 10, or adapted to the target when --runs and --duration are both set)
+  -v, --verbose            print every file (otherwise a status line every 10s, plus failures/retries)
+  Error injection (--bad-ratio, --scenario), --types, --producers (the pool), --bootstrap and --dry-run still apply.
+  Example: npm run sim:producers -- --ramp 0,10 --runs 3000 --duration 10 -b 0.2
 
 ${c.bold('customers options')}
   -c, --customers <N>      customers to simulate (default 5, max 8 seeded)
@@ -44,7 +56,7 @@ ${c.bold('environment')}  FTP_HOST (localhost) FTP_PORT (21) FTP_PRODUCER_PASSWO
 const env = process.env;
 const [command, ...rest] = process.argv.slice(2);
 
-const { values, positionals } = parseArgs({
+const { values, positionals } = parseArgsOrExit({
   args: rest,
   allowPositionals: true,
   options: {
@@ -53,6 +65,13 @@ const { values, positionals } = parseArgs({
     types: { type: 'string', short: 't' },
     producers: { type: 'string', short: 'p' },
     interval: { type: 'string', short: 'i' },
+    delay: { type: 'string', short: 'd' },
+    ramp: { type: 'string' },
+    'producer-ramp': { type: 'string' },
+    runs: { type: 'string' },
+    'number-run': { type: 'string' },
+    duration: { type: 'string' },
+    verbose: { type: 'boolean', short: 'v' },
     bootstrap: { type: 'boolean' },
     scenario: { type: 'string', short: 's' },
     usage: { type: 'string' },
@@ -68,7 +87,22 @@ const { values, positionals } = parseArgs({
   },
 });
 
+/** parseArgs, but a mistyped option prints one line instead of a stack trace. */
+function parseArgsOrExit<T extends ParseArgsConfig>(config: T): ReturnType<typeof parseArgs<T>> {
+  try {
+    return parseArgs<T>(config);
+  } catch (e) {
+    console.error(c.red(`✖ ${(e as Error).message}`) + c.dim('  (see npm run sim:producers -- --help)'));
+    process.exit(2);
+  }
+}
+
 const num = (v: string | undefined, d: number) => (v === undefined || v === '' ? d : Number(v));
+const positive = (v: string, flag: string) => {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) throw new Error(`${flag} expects a positive number, got "${v}"`);
+  return n;
+};
 const ftp = { host: env.FTP_HOST ?? 'localhost', port: Number(env.FTP_PORT ?? 21), password: env.FTP_PRODUCER_PASSWORD ?? 'producer123' };
 // npm workspaces run scripts from apps/simulator; resolve paths against where the user typed the command.
 const userCwd = env.INIT_CWD ?? process.cwd();
@@ -84,19 +118,35 @@ async function main() {
       const types = (values.types ?? env.SIM_TYPES ?? '832,846,856').split(',').map((t) => t.trim()) as SupportedType[];
       const invalid = types.filter((t) => !['832', '846', '856'].includes(t));
       if (invalid.length) throw new Error(`Unsupported type(s): ${invalid.join(', ')}`);
-      await runProducers({
+      const delayArg = values.delay ?? env.SIM_DELAY;
+      const base = {
         count: num(values.count ?? env.SIM_COUNT, 20),
         badRatio: num(values['bad-ratio'] ?? env.SIM_BAD_RATIO, 0.25),
         types,
         producers: resolveProducers(values.producers ?? env.SIM_PRODUCERS),
         intervalMs: num(values.interval ?? env.SIM_INTERVAL_MS, 300),
+        delaySec: delayArg !== undefined && delayArg !== '' ? positive(delayArg, '--delay') : undefined,
         bootstrap: values.bootstrap ?? env.SIM_BOOTSTRAP === 'true',
         scenario: values.scenario,
         outDir,
         dryRun: values['dry-run'] ?? false,
-        usage: values.usage === 'P' ? 'P' : 'T',
+        usage: values.usage === 'P' ? 'P' as const : 'T' as const,
         ftp,
-      });
+      };
+      const ramp = values.ramp ?? values['producer-ramp'] ?? env.SIM_RAMP;
+      const runs = values.runs ?? values['number-run'] ?? env.SIM_RUNS;
+      const duration = values.duration ?? env.SIM_DURATION;
+      if (ramp !== undefined || runs !== undefined || duration !== undefined) {
+        await runLongevity({
+          ...base,
+          ramp: parseRamp(ramp, base.producers.length),
+          runs: runs !== undefined ? positive(runs, '--runs') : undefined,
+          durationMin: duration !== undefined ? positive(duration, '--duration') : undefined,
+          verbose: values.verbose ?? false,
+        });
+      } else {
+        await runProducers(base);
+      }
       break;
     }
     case 'customers':
