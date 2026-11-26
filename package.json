@@ -7,7 +7,7 @@
     "apps/*"
   ],
   "scripts": {
-    "infra:up": "docker compose up -d postgres rabbitmq ftp",
+    "infra:up": "docker compose up -d postgres rabbitmq ftp ftp-node-1 ftp-node-2 ftp-node-3 platform-controller prometheus",
     "dev:distributor-api": "npm run dev -w @edi/distributor-api",
     "dev:distributor-web": "npm run dev -w @edi/distributor-web",
     "dev:order-api": "npm run dev -w @edi/order-api",
@@ -22,7 +22,8 @@
     "sim:scenarios": "npm run sim -w @edi/simulator -- scenarios",
     "up": "docker compose up -d --build",
     "down": "docker compose down",
-    "reset": "docker compose down -v"
+    "reset": "docker compose down -v",
+    "chaos:ftp": "bash scripts/chaos/ftp-node-fail.sh"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

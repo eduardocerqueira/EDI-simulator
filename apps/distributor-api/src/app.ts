@@ -12,6 +12,7 @@ import { commerceRoutes } from './routes/commerce.js';
 import { kpiRoutes } from './routes/kpi.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { x12Routes } from './routes/x12.js';
+import { platformRoutes } from './routes/platform.js';
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -61,6 +62,7 @@ export async function buildApp() {
     await secured.register(kpiRoutes);
     await secured.register(notificationRoutes);
     await secured.register(x12Routes);
+    await secured.register(platformRoutes);
   }, { prefix: '/api' });
 
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {

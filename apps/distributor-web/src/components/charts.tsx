@@ -57,6 +57,7 @@ export function VBarChart({
   stacked,
   xFormatter,
   yFormatter,
+  animate = true,
 }: {
   data: Array<Record<string, unknown>>;
   xKey: string;
@@ -65,6 +66,8 @@ export function VBarChart({
   stacked?: boolean;
   xFormatter?: (v: unknown) => string;
   yFormatter?: (v: number) => string;
+  /** Disable for live-refreshing data (recharts re-animates from zero on every new data array). */
+  animate?: boolean;
 }) {
   const keys = Object.keys(config);
   if (!data.length) return <EmptyState title="No data in range" />;
@@ -77,7 +80,7 @@ export function VBarChart({
         <ChartTooltip content={<ChartTooltipContent labelFormatter={xFormatter} valueFormatter={yFormatter ? (v) => yFormatter(Number(v)) : undefined} />} />
         {keys.length > 1 && <ChartLegend content={<ChartLegendContent />} />}
         {keys.map((k, i) => (
-          <Bar key={k} dataKey={k} stackId={stacked ? 'a' : undefined} fill={`var(--color-${k})`} radius={stacked ? (i === keys.length - 1 ? [4, 4, 0, 0] : 0) : 4} />
+          <Bar key={k} dataKey={k} stackId={stacked ? 'a' : undefined} fill={`var(--color-${k})`} radius={stacked ? (i === keys.length - 1 ? [4, 4, 0, 0] : 0) : 4} isAnimationActive={animate} />
         ))}
       </BarChart>
     </ChartContainer>

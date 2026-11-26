@@ -2,6 +2,7 @@
 #   target "api"        → distributor-api / order-api   (ARG APP)
 #   target "web"        → distributor-web / order-web   (ARG APP), served by nginx
 #   target "simulator"  → producer / customer simulator CLI
+#   target "platform"   → platform controller (FTP cluster self-healing)
 FROM docker.io/library/node:22-bookworm-slim AS deps
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
  && rm -rf /var/lib/apt/lists/*
@@ -11,6 +12,7 @@ COPY packages/x12/package.json packages/x12/
 COPY packages/shared/package.json packages/shared/
 COPY packages/ui/package.json packages/ui/
 COPY apps/simulator/package.json apps/simulator/
+COPY apps/platform-controller/package.json apps/platform-controller/
 COPY apps/distributor-web/package.json apps/distributor-web/
 COPY apps/order-web/package.json apps/order-web/
 COPY apps/distributor-api/package.json apps/distributor-api/
@@ -48,3 +50,9 @@ COPY apps/simulator apps/simulator
 ENV SIM_OUT_DIR=/data
 ENTRYPOINT ["npx", "tsx", "apps/simulator/src/cli.ts"]
 CMD ["help"]
+
+# ---------------------------------------------------------------- platform controller
+FROM deps AS platform
+COPY packages packages
+COPY apps/platform-controller apps/platform-controller
+CMD ["npx", "tsx", "apps/platform-controller/src/index.ts"]

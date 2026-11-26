@@ -9,6 +9,8 @@
 export const EXCHANGES = {
   edi: 'edi.events',
   orders: 'order.events',
+  /** Platform / infrastructure events from the platform controller (FTP cluster). */
+  platform: 'platform.events',
   deadLetter: 'dlx',
 } as const;
 
@@ -17,6 +19,8 @@ export const QUEUES = {
   distributorNotifications: 'distributor.notifications',
   /** Distributor replica of customers, orders and bills. */
   distributorOrderEvents: 'distributor.order-events',
+  /** Distributor notification center: platform (FTP cluster) events. */
+  distributorPlatform: 'distributor.platform',
   /** Audit tap that receives everything (handy in the RabbitMQ UI). */
   audit: 'audit.all',
   deadLetter: 'dead-letter',
@@ -37,7 +41,29 @@ export const ROUTING_KEYS = {
   orderCancelled: 'order.cancelled',
   billPaid: 'bill.paid',
   customerRegistered: 'customer.registered',
+  platformNodeDown: 'platform.node.down',
+  platformNodeReplacing: 'platform.node.replacing',
+  platformNodeReady: 'platform.node.ready',
+  platformChaos: 'platform.chaos.injected',
+  platformAlertFiring: 'platform.alert.firing',
+  platformAlertResolved: 'platform.alert.resolved',
 } as const;
+
+/** Event published by the platform controller (FTP cluster HA). */
+export interface PlatformEvent {
+  eventId: string;
+  occurredAt: string;
+  routingKey: string;
+  severity: 'INFO' | 'WARNING' | 'ERROR';
+  title: string;
+  message: string;
+  node?: string;
+  slot?: number;
+  container?: string;
+  generation?: number;
+  recoverySeconds?: number;
+  alert?: string;
+}
 
 export interface EdiEvent {
   eventId: string;

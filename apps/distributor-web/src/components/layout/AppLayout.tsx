@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Activity, AlertTriangle, BarChart3, Bell, BookOpen, Boxes, ChevronsLeft, ChevronsRight, FileStack, FileText, Gauge, LayoutDashboard,
-  LogOut, Mail, Menu, Moon, Package, Receipt, ScanSearch, Send, ShoppingCart, Sun, Truck, Users, Workflow, type LucideIcon,
+  HardDrive, LogOut, Mail, Menu, Moon, Package, Receipt, ScanSearch, Send, ServerCog, ShoppingCart, Sun, Truck, Users, Workflow, type LucideIcon,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@edi/ui/components/avatar';
 import { Badge } from '@edi/ui/components/badge';
@@ -19,6 +19,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fmt } from '@/lib/format';
 import { statusVariant } from '@/lib/status';
+import type { PlatformOverview } from '@/lib/types';
 
 interface NavItem {
   to: string;
@@ -46,6 +47,13 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { to: '/edi/validation', label: 'Validation', icon: AlertTriangle },
       { to: '/edi/deliveries', label: 'API Deliveries', icon: Send },
       { to: '/edi/acks', label: 'Acknowledgments', icon: FileText },
+    ],
+  },
+  {
+    section: 'Platform',
+    items: [
+      { to: '/platform', label: 'FTP Cluster', icon: ServerCog, end: true },
+      { to: '/platform/storage', label: 'Storage', icon: HardDrive },
     ],
   },
   {
@@ -101,7 +109,26 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
   );
 }
 
-function NavList({ collapsed, unread, onNavigate }: { collapsed?: boolean; unread: number; onNavigate?: () => void }) {
+/** Small health summary of the FTP cluster for the sidebar badge. */
+interface PlatformHealth {
+  ready: number;
+  desired: number;
+  firing: number;
+  reachable: boolean;
+}
+
+function PlatformBadge({ health, collapsed }: { health?: PlatformHealth; collapsed?: boolean }) {
+  if (!health) return null;
+  const degraded = !health.reachable || health.ready < health.desired;
+  const bad = degraded || health.firing > 0;
+  const label = !health.reachable ? '!' : degraded ? `${health.ready}/${health.desired}` : health.firing ? String(health.firing) : '';
+  if (collapsed || !bad) {
+    return <span className={cn('size-2 rounded-full', collapsed ? 'absolute top-1 right-1' : 'ml-auto', bad ? 'bg-destructive animate-pulse' : 'bg-success')} />;
+  }
+  return <span className={cn('ml-auto rounded-full px-1.5 text-[10px] leading-4 font-semibold text-white', degraded ? 'bg-destructive' : 'bg-warning')}>{label}</span>;
+}
+
+function NavList({ collapsed, unread, platform, onNavigate }: { collapsed?: boolean; unread: number; platform?: PlatformHealth; onNavigate?: () => void }) {
   return (
     <nav className="flex flex-col gap-5">
       {NAV.map((g) => (
@@ -125,6 +152,7 @@ function NavList({ collapsed, unread, onNavigate }: { collapsed?: boolean; unrea
                 >
                   <item.icon className="size-4 shrink-0" />
                   {!collapsed && <span className="truncate">{item.label}</span>}
+                  {item.to === '/platform' && <PlatformBadge health={platform} collapsed={collapsed} />}
                   {item.to === '/notifications' && unread > 0 && (
                     <span className={cn('bg-destructive rounded-full px-1.5 text-[10px] leading-4 font-semibold text-white', collapsed ? 'absolute top-0.5 right-0.5' : 'ml-auto')}>
                       {unread > 99 ? '99+' : unread}
@@ -150,6 +178,7 @@ function NavList({ collapsed, unread, onNavigate }: { collapsed?: boolean; unrea
 
 interface NotificationRow {
   id: string;
+  type?: string;
   severity: string;
   title: string;
   message: string;
@@ -180,7 +209,7 @@ function NotificationBell({ unread, items }: { unread: number; items: Notificati
           {items.map((n) => (
             <Link
               key={n.id}
-              to={n.transactionId ? `/edi/transactions/${n.transactionId}` : n.interchangeId ? `/edi/interchanges/${n.interchangeId}` : '/notifications'}
+              to={n.type?.startsWith('platform.') ? '/platform' : n.transactionId ? `/edi/transactions/${n.transactionId}` : n.interchangeId ? `/edi/interchanges/${n.interchangeId}` : '/notifications'}
               className="hover:bg-muted/60 block border-b px-4 py-3 last:border-0"
             >
               <div className="flex items-center gap-2">
@@ -228,6 +257,15 @@ export function AppLayout() {
     refetchInterval: 5000,
   });
   const health = useQuery({ queryKey: ['health'], queryFn: () => api<{ status: string; rabbitmq: boolean; db: boolean }>('/health'), refetchInterval: 15000 });
+  const platformQ = useQuery({ queryKey: ['platform', 'overview'], queryFn: () => api<PlatformOverview>('/platform/overview'), refetchInterval: 5000 });
+  const platform: PlatformHealth | undefined = platformQ.data
+    ? {
+        reachable: platformQ.data.controller.reachable,
+        ready: platformQ.data.controller.reachable ? platformQ.data.controller.readyNodes : 0,
+        desired: platformQ.data.controller.reachable ? platformQ.data.controller.desiredNodes : 0,
+        firing: platformQ.data.prometheus.alerts.filter((a) => a.state === 'firing').length,
+      }
+    : undefined;
   const unread = notif.data?.unread ?? 0;
   const initials = (user?.name ?? 'A').split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
 
@@ -238,7 +276,7 @@ export function AppLayout() {
           <Brand collapsed={collapsed} />
         </div>
         <div className="flex-1 overflow-y-auto overscroll-contain px-2 py-4">
-          <NavList collapsed={collapsed} unread={unread} />
+          <NavList collapsed={collapsed} unread={unread} platform={platform} />
         </div>
         <div className="border-t p-2">
           <Button variant="ghost" size="sm" className="w-full" onClick={() => setCollapsed((c) => !c)}>
@@ -254,7 +292,7 @@ export function AppLayout() {
             <Brand />
           </div>
           <div className="overflow-y-auto overscroll-contain px-2 py-4">
-            <NavList unread={unread} onNavigate={() => setMobileOpen(false)} />
+            <NavList unread={unread} platform={platform} onNavigate={() => setMobileOpen(false)} />
           </div>
         </SheetContent>
       </Sheet>

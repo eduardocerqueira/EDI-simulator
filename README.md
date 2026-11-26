@@ -14,8 +14,8 @@ Three short recordings of the real stack running locally. The previews play inli
 
 | 1 · Infrastructure | 2 · Distributor — EDI Control Center | 3 · Customer — Order app |
 |:---:|:---:|:---:|
-| [![Infrastructure demo](docs/demo/infra-preview.gif)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/infra.mp4)<br/>**[▶ Play full video (1:53)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/infra.mp4)** | [![Distributor demo](docs/demo/distributor-preview.gif)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/distributor.mp4)<br/>**[▶ Play full video (2:48)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/distributor.mp4)** | [![Customer demo](docs/demo/customer-preview.gif)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/customer.mp4)<br/>**[▶ Play full video (1:48)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/customer.mp4)** |
-| Containers, the FTP mailboxes, `sim:producers` sending good and bad X12, the pipeline log, TA1/997 acks over FTP, and RabbitMQ exchanges, bindings and messages. | Dashboard, envelope trace (ISA → GS → ST), annotated segments, rejections with their X12 codes, X12 ⇄ JSON, FTP drawer, validation, notifications, inventory traceability, KPIs and the X12 Inspector. | Shopping the EDI-loaded inventory, cart and checkout (Net-30 bill), cancelling an order, paying a bill, and the resulting RabbitMQ events arriving at the distributor. |
+| [![Infrastructure demo](docs/demo/infra-preview.gif)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/infra.mp4)<br/>**[▶ Play full video (2:16)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/infra.mp4)** | [![Distributor demo](docs/demo/distributor-preview.gif)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/distributor.mp4)<br/>**[▶ Play full video (3:42)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/distributor.mp4)** | [![Customer demo](docs/demo/customer-preview.gif)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/customer.mp4)<br/>**[▶ Play full video (1:47)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/customer.mp4)** |
+| The stack and the **HA FTP cluster** (load balancer + 3 nodes on shared storage), producer mailboxes, `sim:producers` sending good and bad X12 spread across the nodes, the pipeline log, a live **`chaos:ftp`** run (node frozen → replaced → serving again), HAProxy stats, Prometheus graph and alerts, and RabbitMQ exchanges and queues. | Dashboard, envelope trace (ISA → GS → ST), annotated segments, rejections with their X12 codes, X12 ⇄ JSON, FTP drawer, validation, notifications, inventory traceability, KPIs, **Platform → FTP Cluster** (simulated node failure healing on screen) and **Storage**, and the X12 Inspector. | Shopping the EDI-loaded inventory, cart and checkout (Net-30 bill), cancelling an order, paying a bill, and the resulting RabbitMQ events arriving at the distributor. |
 
 <sub>Recorded with Playwright against the running apps: see [scripts/demo](scripts/demo) to re-record them.</sub>
 
@@ -48,10 +48,49 @@ docker compose run --rm simulator customers -o 20
 | RabbitMQ management | http://localhost:15672 | `edi` / `edi` |
 | Distributor API / Prometheus metrics | http://localhost:4000/api/health · /metrics | |
 | Order API | http://localhost:4100/api/health | |
-| FTP | `ftp://localhost:21` | `distributor`/`distributor123`, producers e.g. `zephyrwood`/`producer123` |
-| Prometheus (optional) | http://localhost:9090 | `docker compose --profile observability up -d` |
+| FTP (load balancer → 3 nodes) | `ftp://localhost:21` | `distributor`/`distributor123`, producers e.g. `zephyrwood`/`producer123` |
+| HAProxy stats (FTP load balancer) | http://localhost:8404 | |
+| Prometheus (metrics + alerts) | http://localhost:9090 | |
+| Platform controller API / metrics | http://localhost:9100/api/state · /metrics | |
 
 Reset everything (databases, FTP mailboxes, queues): `docker compose down -v`.
+
+## High-availability FTP platform
+
+The FTP server is a **cluster** rather than a single container, so a producer can always deliver files even when an FTP node hangs or crashes.
+
+[![HA FTP platform: load balancer, 3 nodes on a shared volume, self-healing controller and Prometheus — click to open full size](docs/ha-platform.svg)](docs/ha-platform.svg)
+
+<sub>Click the diagram to open it full size. Source: [docs/ha-platform.svg](docs/ha-platform.svg).</sub>
+
+| Piece | What it does |
+|---|---|
+| **Load balancer** (`ftp`, HAProxy) | Keeps the service name and port `ftp:21`, so producers, the distributor and the simulator need no changes. Control connections are balanced across healthy nodes with an FTP-aware health check: a node must answer the `220` greeting. |
+| **3 FTP nodes** (`ftp-node-1..3`) | Identical vsftpd nodes ([infra/ftp/Containerfile](infra/ftp/Containerfile)) that all mount **one shared storage volume** (`ftp-storage`) holding every producer mailbox. Each node owns a passive port range (21100–09, 21110–19, 21120–29), and the load balancer routes each range to its node so FTP data connections reach the node holding the session. |
+| **Platform controller** ([apps/platform-controller](apps/platform-controller)) | Probes every node's FTP greeting every 2 s. After 3 failed probes it declares the node **DOWN**, removes the container and **spawns a new one** in the same slot: same image, same shared volume, same network alias the load balancer resolves. It measures the recovery time, scans the shared volume (fresh / archived / acks / error files per producer), and publishes `platform.*` events to RabbitMQ. |
+| **Prometheus** ([infra/prometheus](infra/prometheus)) | Scrapes HAProxy (per-node status, sessions, traffic), the controller and the APIs, and evaluates alert rules: `FtpNodeDown`, `FtpClusterDegraded`, `FtpClusterUnavailable`, `FtpLoadBalancerBackendDown`, `FtpInboxBacklog`, `FtpStorageAlmostFull` and `PlatformControllerDown`. Firing and resolved alerts become platform notifications. |
+
+**Break a node and watch it heal:**
+
+```bash
+npm run chaos:ftp                     # freeze a random node (docker pause: accepts TCP, never answers)
+npm run chaos:ftp -- --node 2         # pick the node
+npm run chaos:ftp -- --mode kill      # crash it instead
+```
+
+The script injects the failure with the Docker CLI, then follows the recovery live. During the outage it keeps listing a producer mailbox through the load balancer to show FTP stays available:
+
+```
++  0s  ftp-node-2   READY     gen 1   LB ok
++  5s  ftp-node-2   SUSPECT   gen 1   LB ok
++ 10s  ftp-node-2   STARTING  gen 2   LB ok
++ 13s  ftp-node-2   READY     gen 2   LB ok
+timeline : first failed probe +4s → declared down +10s → new container +10s → serving +13s
+```
+
+In the EDI Control Center, **Platform → FTP Cluster** shows the nodes and their status, load-balancer state, traffic and sessions per node, probe latency, Prometheus alerts, the recovery timeline and platform notifications, plus a *Simulate failure* button. **Platform → Storage** shows the shared volume per producer: fresh, archived, acks and error files, bytes on the volume, and inbound/outbound traffic.
+
+> The controller needs the Docker socket (`/var/run/docker.sock`) to replace containers, the role an orchestrator such as Kubernetes would play in production. The shared volume stands in for network storage such as NFS or EFS.
 
 ## The scenario
 
@@ -171,15 +210,20 @@ apps/
   order-api/         Fastify + Prisma: customers, products, orders, bills, outbox, integration endpoint
   order-web/         React storefront
   simulator/         CLI: producers (X12 over FTP), customers (REST), inspect, acks
+  platform-controller/  self-healing for the FTP cluster, storage scan, platform events + metrics
 infra/
-  ftp/Containerfile  vsftpd with one mailbox per partner
+  ftp/Containerfile  vsftpd FTP node (cluster of 3 on one shared storage volume)
+  haproxy/           load balancer for the FTP cluster (control + passive port ranges)
+  prometheus/        scrape config + FTP cluster alert rules
   docker/Dockerfile  multi-target image (api / web / simulator)
 docs/
   X12-PRIMER.md      how to read an X12 envelope, using this project's files
   architecture.svg   architecture diagram
+  ha-platform.svg    HA FTP platform + self-healing diagram
   demo/              demo videos (MP4) + inline previews (GIF)
 scripts/
-  e2e.sh             end-to-end acceptance test (CI gate)
+  e2e.sh             end-to-end acceptance test (CI gate), incl. an FTP node failure
+  chaos/             ftp-node-fail.sh — break an FTP node and watch it self-heal
   demo/              Playwright recorder for the demo videos
 ```
 
@@ -187,7 +231,7 @@ scripts/
 
 ```bash
 npm install
-npm run infra:up                                   # postgres, rabbitmq, ftp only
+npm run infra:up                                   # postgres, rabbitmq, FTP cluster, controller, prometheus
 cp apps/distributor-api/.env.example apps/distributor-api/.env
 cp apps/order-api/.env.example apps/order-api/.env
 (cd apps/distributor-api && npx prisma db push) && (cd apps/order-api && npx prisma db push)
@@ -205,7 +249,7 @@ npm test && npm run typecheck
 | Job | What it verifies |
 |---|---|
 | **Typecheck · unit tests · build** | Prisma schemas are valid, TypeScript in every workspace, X12 engine + all 29 bad-data scenarios (`npm test`), both web apps build |
-| **End-to-end** | [scripts/e2e.sh](scripts/e2e.sh) starts the whole Docker stack, sends 10 catalogs + 15 valid files + one file per error layer over FTP, then asserts the exact accepted / rejected counts, the TA1/997 codes, REST deliveries, acks, RabbitMQ notifications, product → X12 traceability, the order app inventory, customer orders with Net-30 bills, and both web apps behind nginx |
+| **End-to-end** | [scripts/e2e.sh](scripts/e2e.sh) starts the whole Docker stack, sends 10 catalogs + 15 valid files + one file per error layer over FTP, then asserts the exact accepted / rejected counts, the TA1/997 codes, REST deliveries, acks, RabbitMQ notifications, product → X12 traceability, the order app inventory, customer orders with Net-30 bills, and both web apps behind nginx. It also **freezes an FTP node** mid-test and asserts that uploads keep working through the load balancer, the node is replaced and READY again, platform notifications arrive, and Prometheus and the platform overview report the cluster correctly |
 | **PR gate** | Passes only when both jobs pass — make it the single *required status check* in the branch protection rule for `main` |
 
 Run the same gate locally: `npm run typecheck && npm test && scripts/e2e.sh` (the e2e uses its own compose project `edi-e2e`, but the same host ports, so stop the dev stack first).

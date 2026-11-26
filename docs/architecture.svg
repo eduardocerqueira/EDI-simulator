@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1640 1010" width="1640" height="1010" font-family="Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1640 1090" width="1640" height="1090" font-family="Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
   <title>EDI Simulator architecture</title>
-  <desc>Ten fictional farm producers send ANSI X12 832/846/856 over FTP to the Harvest Hub distributor, which validates, acknowledges (TA1/997), maps to JSON, ingests and delivers inventory over REST to the Harvest Market order app. RabbitMQ carries EDI notifications and order events.</desc>
+  <desc>Ten fictional farm producers send ANSI X12 832/846/856 over FTP to the Harvest Hub distributor, which validates, acknowledges (TA1/997), maps to JSON, ingests and delivers inventory over REST to the Harvest Market order app. RabbitMQ carries EDI notifications, order events and platform events. The FTP server is a highly available cluster: an HAProxy load balancer in front of three vsftpd nodes on one shared storage volume, healed by a platform controller and monitored by Prometheus; the EDI Control Center Platform area reads both.</desc>
   <defs>
     <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
@@ -26,7 +26,7 @@
   </defs>
 
   <!-- background -->
-  <rect width="1640" height="1010" rx="22" fill="#f8fafc"/>
+  <rect width="1640" height="1090" rx="22" fill="#f8fafc"/>
   <text x="40" y="58" font-size="28" font-weight="800" fill="#0f172a">EDI Simulator — architecture</text>
   <text x="40" y="86" class="s">ANSI X12 004010 B2B flow · all companies, people and data are fictional · everything runs locally with docker compose</text>
 
@@ -48,22 +48,62 @@
   <rect x="62" y="400" width="226" height="40" rx="8" fill="#065f46"/>
   <text x="76" y="425" class="m" fill="#d1fae5" style="fill:#d1fae5">npm run sim:producers</text>
 
-  <!-- ================= FTP ================= -->
+  <!-- ================= FTP cluster (HA) ================= -->
   <g filter="url(#sh)">
     <rect x="390" y="130" width="270" height="330" rx="16" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
   </g>
-  <text x="412" y="166" class="t">FTP server</text>
-  <text x="412" y="188" class="s">vsftpd · infra/ftp/Containerfile</text>
-  <text x="412" y="222" class="b">One mailbox per producer</text>
-  <rect x="412" y="234" width="226" height="148" rx="10" class="pill"/>
-  <text x="426" y="258" class="m">/zephyrwood/</text>
-  <text x="440" y="282" class="m">to_distributor/   ← X12</text>
-  <text x="440" y="304" class="m">from_distributor/ → acks</text>
-  <text x="440" y="326" class="m">archive/</text>
-  <text x="440" y="348" class="m">error/</text>
-  <text x="426" y="372" class="lbls">chroot per user · distributor sees all</text>
-  <text x="412" y="410" class="lbls">ports 21 + passive 21100-21110</text>
-  <text x="412" y="432" class="lbls">uploads as .tmp then rename</text>
+  <text x="412" y="166" class="t">FTP cluster (HA)</text>
+  <text x="412" y="188" class="s">HAProxy LB → 3 vsftpd nodes</text>
+  <rect x="412" y="200" width="226" height="44" rx="10" fill="#0f172a"/>
+  <text x="426" y="220" font-size="14" font-weight="700" fill="#fff">Load balancer · ftp:21</text>
+  <text x="426" y="236" font-size="12" fill="#cbd5e1">HAProxy · "220" health check</text>
+  <path d="M525 244 L446 264 M525 244 V264 M525 244 L604 264" stroke="#64748b" stroke-width="1.6" fill="none"/>
+  <g font-size="12">
+    <rect x="412" y="264" width="68" height="50" rx="8" fill="#fff" stroke="#94a3b8"/>
+    <text x="446" y="284" text-anchor="middle" font-weight="700" fill="#0f172a">node 1</text>
+    <text x="446" y="302" text-anchor="middle" fill="#475569" font-size="11">21100–09</text>
+    <rect x="491" y="264" width="68" height="50" rx="8" fill="#fff" stroke="#94a3b8"/>
+    <text x="525" y="284" text-anchor="middle" font-weight="700" fill="#0f172a">node 2</text>
+    <text x="525" y="302" text-anchor="middle" fill="#475569" font-size="11">21110–19</text>
+    <rect x="570" y="264" width="68" height="50" rx="8" fill="#fff" stroke="#94a3b8"/>
+    <text x="604" y="284" text-anchor="middle" font-weight="700" fill="#0f172a">node 3</text>
+    <text x="604" y="302" text-anchor="middle" fill="#475569" font-size="11">21120–29</text>
+  </g>
+  <path d="M446 314 V334 M525 314 V334 M604 314 V334" stroke="#64748b" stroke-width="1.6" fill="none"/>
+  <path d="M412 340 v46 a113 10 0 0 0 226 0 v-46" fill="#e2e8f0" stroke="#64748b" stroke-width="1.6"/>
+  <ellipse cx="525" cy="340" rx="113" ry="10" fill="#cbd5e1" stroke="#64748b" stroke-width="1.6"/>
+  <text x="525" y="368" text-anchor="middle" class="b" font-size="14">shared storage volume</text>
+  <text x="525" y="386" text-anchor="middle" class="lbls">one mailbox per producer</text>
+  <text x="412" y="420" class="m" font-size="12">to_distributor · archive</text>
+  <text x="412" y="438" class="m" font-size="12">from_distributor · error</text>
+
+  <!-- ================= Platform controller + Prometheus ================= -->
+  <g filter="url(#sh)">
+    <rect x="390" y="490" width="152" height="196" rx="14" fill="#fff" stroke="#0f172a" stroke-width="1.8"/>
+    <rect x="552" y="490" width="152" height="196" rx="14" fill="#fff" stroke="#e6522c" stroke-width="1.8"/>
+  </g>
+  <text x="404" y="516" font-size="14.5" font-weight="700" fill="#0f172a">Platform</text>
+  <text x="404" y="534" font-size="14.5" font-weight="700" fill="#0f172a">controller</text>
+  <text x="404" y="558" class="lbls">probe "220" / 2 s</text>
+  <text x="404" y="578" class="lbls">3 fails → replace</text>
+  <text x="404" y="596" class="lbls">  node (same slot,</text>
+  <text x="404" y="614" class="lbls">  shared volume)</text>
+  <text x="404" y="634" class="lbls">storage scan</text>
+  <text x="404" y="652" class="lbls">platform events</text>
+  <text x="404" y="674" class="m" font-size="12">:9100 · chaos API</text>
+  <text x="566" y="516" font-size="14.5" font-weight="700" fill="#0f172a">Prometheus</text>
+  <text x="566" y="540" class="lbls">scrapes LB, controller,</text>
+  <text x="566" y="558" class="lbls">APIs, RabbitMQ</text>
+  <text x="566" y="582" class="lbls">alert rules:</text>
+  <text x="566" y="600" class="lbls">  FtpNodeDown</text>
+  <text x="566" y="618" class="lbls">  FtpClusterDegraded</text>
+  <text x="566" y="636" class="lbls">  FtpInboxBacklog …</text>
+  <text x="566" y="674" class="m" font-size="12">:9090</text>
+  <path d="M466 488 V464" class="line" marker-end="url(#arr)" stroke-dasharray="4 3"/>
+  <circle cx="446" cy="476" r="10" fill="#0f172a"/><text x="446" y="480" text-anchor="middle" class="n" font-size="11">10</text>
+  <path d="M628 488 V464" class="line" marker-end="url(#arr)" stroke-dasharray="4 3"/>
+  <circle cx="648" cy="476" r="10" fill="#e6522c"/><text x="648" y="480" text-anchor="middle" class="n" font-size="11">11</text>
+  <path d="M552 590 H544" class="line" marker-end="url(#arr)"/>
 
   <!-- ================= Distributor ================= -->
   <g filter="url(#sh)">
@@ -114,7 +154,7 @@
   <text x="782" y="576" font-size="15" font-weight="700" fill="#fff">EDI Control Center (React + shadcn/ui)</text>
   <text x="782" y="600" font-size="13" fill="#bbf7d0">envelope trace · X12 ⇄ JSON · validation · FTP transfers · deliveries</text>
   <text x="782" y="620" font-size="13" fill="#bbf7d0">notifications · inventory traceability · customers &amp; billing</text>
-  <text x="782" y="640" font-size="13" fill="#bbf7d0">reports · KPIs · X12 Inspector &amp; Reference</text>
+  <text x="782" y="640" font-size="13" fill="#bbf7d0">reports · KPIs · X12 Inspector · Platform: FTP cluster &amp; storage</text>
 
   <!-- ================= Order app ================= -->
   <g filter="url(#sh)">
@@ -148,28 +188,34 @@
 
   <!-- ================= RabbitMQ ================= -->
   <g filter="url(#sh)">
-    <rect x="390" y="740" width="870" height="230" rx="18" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2.5"/>
+    <rect x="390" y="740" width="870" height="240" rx="18" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2.5"/>
   </g>
   <text x="414" y="778" class="t">RabbitMQ</text>
-  <text x="556" y="778" class="s">management UI :15672 · topic exchanges · dead-letter queue</text>
-  <rect x="414" y="796" width="250" height="66" rx="10" fill="#fff" stroke="#c4b5fd"/>
-  <text x="430" y="822" class="b">exchange edi.events</text>
-  <text x="430" y="846" class="lbls">edi.interchange.* · edi.*.failed …</text>
-  <rect x="414" y="876" width="250" height="66" rx="10" fill="#fff" stroke="#c4b5fd"/>
-  <text x="430" y="902" class="b">exchange order.events</text>
-  <text x="430" y="926" class="lbls">order.created · order.cancelled · bill.paid</text>
-  <path d="M664 829 H720" class="lineP" marker-end="url(#arrP)"/>
-  <path d="M664 909 H720" class="lineP" marker-end="url(#arrP)"/>
-  <rect x="722" y="796" width="300" height="40" rx="9" fill="#ede9fe"/>
-  <text x="736" y="821" class="m">distributor.notifications</text>
-    <rect x="722" y="844" width="300" height="40" rx="9" fill="#ede9fe"/>
-  <text x="736" y="869" class="m">distributor.order-events</text>
-  <rect x="722" y="892" width="300" height="40" rx="9" fill="#ede9fe"/>
-  <text x="736" y="917" class="m">audit.all  ·  dead-letter</text>
-  <text x="1040" y="822" class="lbls">→ bell notifications</text>
-  <text x="1040" y="870" class="lbls">→ customers / orders /</text>
-  <text x="1040" y="888" class="lbls">   bills replica + stock</text>
-  <text x="1040" y="918" class="lbls">→ inspect any message</text>
+  <text x="664" y="778" class="s">management UI :15672 · topic exchanges · dead-letter queue</text>
+  <rect x="414" y="790" width="250" height="52" rx="10" fill="#fff" stroke="#c4b5fd"/>
+  <text x="430" y="811" class="b">exchange edi.events</text>
+  <text x="430" y="831" class="lbls">edi.interchange.* · edi.*.failed …</text>
+  <rect x="414" y="850" width="250" height="52" rx="10" fill="#fff" stroke="#c4b5fd"/>
+  <text x="430" y="871" class="b">exchange order.events</text>
+  <text x="430" y="891" class="lbls">order.created · order.cancelled · bill.paid</text>
+  <rect x="414" y="910" width="250" height="52" rx="10" fill="#fff" stroke="#c4b5fd"/>
+  <text x="430" y="931" class="b">exchange platform.events</text>
+  <text x="430" y="951" class="lbls">node.down · node.ready · alert.*</text>
+  <path d="M664 816 H720" class="lineP" marker-end="url(#arrP)"/>
+  <path d="M664 876 H720" class="lineP" marker-end="url(#arrP)"/>
+  <path d="M664 936 H720" class="lineP" marker-end="url(#arrP)"/>
+  <rect x="722" y="790" width="300" height="38" rx="9" fill="#ede9fe"/>
+  <text x="736" y="814" class="m">distributor.notifications</text>
+  <rect x="722" y="836" width="300" height="38" rx="9" fill="#ede9fe"/>
+  <text x="736" y="860" class="m">distributor.order-events</text>
+  <rect x="722" y="882" width="300" height="38" rx="9" fill="#ede9fe"/>
+  <text x="736" y="906" class="m">distributor.platform</text>
+  <rect x="722" y="928" width="300" height="38" rx="9" fill="#ede9fe"/>
+  <text x="736" y="952" class="m">audit.all  ·  dead-letter</text>
+  <text x="1040" y="814" class="lbls">→ bell notifications</text>
+  <text x="1040" y="860" class="lbls">→ customers / orders / bills + stock</text>
+  <text x="1040" y="906" class="lbls">→ Platform area notifications</text>
+  <text x="1040" y="952" class="lbls">→ inspect any message</text>
 
   <!-- ================= Arrows ================= -->
   <!-- 1 producers -> ftp -->
@@ -198,20 +244,28 @@
   <circle cx="1490" cy="556" r="12" fill="#0f172a"/><text x="1490" y="561" text-anchor="middle" class="n">6</text>
   <text x="1508" y="560" class="lbls">REST + JWT</text>
   <!-- 7 distributor -> edi.events -->
-  <path d="M889 670 V700 H540 V794" class="lineP" marker-end="url(#arrP)"/>
-  <circle cx="700" cy="700" r="12" fill="#7c3aed"/><text x="700" y="705" text-anchor="middle" class="n">7</text>
-  <text x="560" y="692" class="lbls">EDI events</text>
+  <path d="M889 670 V712 H600 V788" class="lineP" marker-end="url(#arrP)"/>
+  <circle cx="740" cy="712" r="12" fill="#7c3aed"/><text x="740" y="717" text-anchor="middle" class="n">7</text>
+  <text x="760" y="704" class="lbls">EDI events</text>
   <!-- 8 order app outbox -> order.events -->
-  <path d="M1352 312 H1310 V730 H340 V909 H412" class="lineP" marker-end="url(#arrP)"/>
+  <path d="M1352 312 H1310 V730 H340 V876 H412" class="lineP" marker-end="url(#arrP)"/>
   <circle cx="1310" cy="600" r="12" fill="#7c3aed"/><text x="1310" y="605" text-anchor="middle" class="n">8</text>
   <text x="1158" y="722" class="lbls">order / bill events (outbox)</text>
   <!-- 9 queues -> distributor -->
   <path d="M1137 794 V672" class="lineP" marker-end="url(#arrP)"/>
   <circle cx="1137" cy="700" r="12" fill="#7c3aed"/><text x="1137" y="705" text-anchor="middle" class="n">9</text>
 
+  <!-- 12 controller -> platform.events -->
+  <path d="M400 686 V936 H412" class="lineP" marker-end="url(#arrP)"/>
+  <circle cx="400" cy="712" r="11" fill="#7c3aed"/><text x="400" y="716" text-anchor="middle" class="n" font-size="11">12</text>
+
+  <!-- 13 control center -> prometheus + controller -->
+  <path d="M740 640 H706" class="line" marker-end="url(#arr)"/>
+  <circle cx="722" cy="620" r="11" fill="#0f172a"/><text x="722" y="624" text-anchor="middle" class="n" font-size="11">13</text>
+
   <!-- Legend -->
   <g transform="translate(40,500)">
-    <rect width="290" height="470" rx="16" fill="#fff" stroke="#e2e8f0"/>
+    <rect width="290" height="568" rx="16" fill="#fff" stroke="#e2e8f0"/>
     <text x="20" y="34" class="b">Flow</text>
     <g class="lbls">
       <text x="20" y="64"><tspan font-weight="700" fill="#0f172a">1</tspan>  Producer uploads X12 to its mailbox</text>
@@ -224,11 +278,15 @@
       <text x="20" y="260"><tspan font-weight="700" fill="#7c3aed">8</tspan>  Order &amp; bill events → order.events</text>
       <text x="20" y="288"><tspan font-weight="700" fill="#7c3aed">9</tspan>  Distributor consumes: notifications,</text>
       <text x="40" y="306">customer/order/bill replica, stock</text>
+      <text x="20" y="334"><tspan font-weight="700" fill="#0f172a">10</tspan>  Controller probes + replaces nodes</text>
+      <text x="20" y="362"><tspan font-weight="700" fill="#e6522c">11</tspan>  Prometheus scrapes + alerts</text>
+      <text x="20" y="390"><tspan font-weight="700" fill="#7c3aed">12</tspan>  Platform events → platform.events</text>
+      <text x="20" y="418"><tspan font-weight="700" fill="#0f172a">13</tspan>  Platform area: PromQL + controller</text>
     </g>
-    <line x1="20" y1="334" x2="60" y2="334" class="line"/><text x="70" y="339" class="lbls">synchronous (FTP / HTTP)</text>
-    <line x1="20" y1="362" x2="60" y2="362" class="lineP"/><text x="70" y="367" class="lbls">asynchronous (RabbitMQ)</text>
-    <text x="20" y="402" class="b">Traceability</text>
-    <text x="20" y="426" class="lbls">product → movement → transaction set</text>
-    <text x="20" y="446" class="lbls">→ interchange → FTP file (+ timeline)</text>
+    <line x1="20" y1="446" x2="60" y2="446" class="line"/><text x="70" y="451" class="lbls">synchronous (FTP / HTTP)</text>
+    <line x1="20" y1="474" x2="60" y2="474" class="lineP"/><text x="70" y="479" class="lbls">asynchronous (RabbitMQ)</text>
+    <text x="20" y="512" class="b">Traceability</text>
+    <text x="20" y="534" class="lbls">product → movement → transaction set</text>
+    <text x="20" y="552" class="lbls">→ interchange → FTP file (+ timeline)</text>
   </g>
 </svg>

@@ -161,3 +161,157 @@ export interface Kpis {
     paidAmount: number;
   };
 }
+
+// ---------------------------------------------------------------------------
+// Platform (HA FTP cluster)
+// ---------------------------------------------------------------------------
+
+export type NodeStatus = 'STARTING' | 'READY' | 'SUSPECT' | 'DOWN' | 'REPLACING' | 'MISSING';
+
+export interface PlatformNode {
+  slot: number;
+  name: string;
+  status: NodeStatus;
+  containerId?: string;
+  containerName?: string;
+  dockerState?: string;
+  ip?: string;
+  generation: number;
+  startedAt?: string;
+  readySince?: string;
+  passivePorts: string;
+  lastProbeAt?: string;
+  lastProbeMs?: number;
+  lastBanner?: string;
+  lastError?: string;
+  consecutiveFailures: number;
+  firstFailureAt?: string;
+  replacements: number;
+  lastRecoverySeconds?: number;
+}
+
+export type ClusterEventType =
+  | 'NODE_READY' | 'PROBE_FAILED' | 'NODE_DOWN' | 'NODE_REPLACING' | 'NODE_REMOVED' | 'NODE_SPAWNED' | 'NODE_RECOVERED'
+  | 'CHAOS_INJECTED' | 'ALERT_FIRING' | 'ALERT_RESOLVED' | 'CONTROLLER_STARTED' | 'REPLACE_FAILED';
+
+export interface ClusterEvent {
+  id: string;
+  at: string;
+  type: ClusterEventType;
+  severity: 'INFO' | 'WARNING' | 'ERROR';
+  slot?: number;
+  node?: string;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+export interface FolderStats {
+  files: number;
+  bytes: number;
+  inFlight: number;
+  newest?: string;
+}
+
+export type MailboxFolder = 'to_distributor' | 'archive' | 'from_distributor' | 'error';
+
+export interface PartnerStorage {
+  partner: string;
+  folders: Record<MailboxFolder, FolderStats>;
+  totalFiles: number;
+  totalBytes: number;
+}
+
+export interface StorageSnapshot {
+  scannedAt?: string;
+  scanMs?: number;
+  path: string;
+  volume?: { sizeBytes: number; freeBytes: number; usedBytes: number; usedRatio: number };
+  partners: PartnerStorage[];
+  totals: { files: number; bytes: number; fresh: number; archived: number; acks: number; error: number };
+  error?: string;
+}
+
+export interface PromAlert {
+  name: string;
+  severity?: string;
+  state: 'firing' | 'pending' | 'inactive' | string;
+  since: string;
+  summary?: string;
+  labels: Record<string, string>;
+}
+
+export interface PromTarget {
+  job: string;
+  instance: string;
+  health: 'up' | 'down' | 'unknown' | string;
+  lastScrape: string;
+  lastError: string;
+}
+
+export interface LbServer {
+  server: string;
+  slot?: number;
+  up: boolean;
+  controlSessions: number;
+  dataSessions: number;
+  bytesIn: number;
+  bytesOut: number;
+  throughputBps: number;
+}
+
+export interface PartnerTraffic {
+  id: string;
+  name: string;
+  isaId: string;
+  ftpUser: string;
+  inboundFiles24h: number;
+  inboundBytes24h: number;
+  outboundFiles24h: number;
+  outboundBytes24h: number;
+}
+
+export interface PlatformNotification {
+  id: string;
+  type: string;
+  severity: string;
+  title: string;
+  message: string;
+  source: string;
+  payload: Record<string, unknown> | null;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface PlatformOverview {
+  controller:
+    | { reachable: false }
+    | {
+        reachable: true;
+        project?: string;
+        desiredNodes: number;
+        readyNodes: number;
+        autoHeal: boolean;
+        probe: { intervalMs: number; timeoutMs: number; failureThreshold: number };
+        lastReconcileAt?: string;
+        nodes: PlatformNode[];
+        events: ClusterEvent[];
+        storage: StorageSnapshot;
+      };
+  loadBalancer: { reachable: boolean; statsUrl: string; servers: LbServer[] };
+  prometheus: { reachable: boolean; url: string; alerts: PromAlert[]; targets: PromTarget[] };
+  partnerTraffic: PartnerTraffic[];
+  notifications: { unread: number; items: PlatformNotification[] };
+}
+
+export type SeriesRow = { t: number } & Record<string, number>;
+
+export interface PlatformTimeseries {
+  minutes: number;
+  step: number;
+  cluster: SeriesRow[];
+  nodeUp: SeriesRow[];
+  traffic: SeriesRow[];
+  sessions: SeriesRow[];
+  probeMs: SeriesRow[];
+  storage: SeriesRow[];
+}

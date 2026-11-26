@@ -5,6 +5,19 @@ x-api-build: &api-build
   dockerfile: infra/docker/Dockerfile
   target: api
 
+x-ftp-env: &ftp-env
+  FTP_DISTRIBUTOR_PASSWORD: ${FTP_DISTRIBUTOR_PASSWORD:-distributor123}
+  FTP_PRODUCER_PASSWORD: ${FTP_PRODUCER_PASSWORD:-producer123}
+
+x-ftp-node: &ftp-node
+  build:
+    context: ./infra/ftp
+    dockerfile: Containerfile
+  image: edi-ftp-node:local
+  volumes:
+    - ftp-storage:/srv/ftp   # the shared storage every node mounts
+  restart: "no"
+
 services:
   # ------------------------------------------------------------------ infra
   postgres:
@@ -37,17 +50,85 @@ services:
       interval: 10s
       retries: 20
 
+  # ---------------------------------------------------------- FTP cluster (HA)
+  # Load balancer: keeps the service name "ftp" so every client is unchanged.
   ftp:
-    build:
-      context: ./infra/ftp
-      dockerfile: Containerfile
-    environment:
-      FTP_DISTRIBUTOR_PASSWORD: ${FTP_DISTRIBUTOR_PASSWORD:-distributor123}
-      FTP_PRODUCER_PASSWORD: ${FTP_PRODUCER_PASSWORD:-producer123}
+    image: haproxy:2.9-alpine
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: 0   # HAProxy runs as non-root and binds :21
+    volumes:
+      - ./infra/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
       - "${FTP_PORT:-21}:21"
-      - "21100-21110:21100-21110"
-    volumes: [ftpdata:/srv/ftp]
+      - "21100-21129:21100-21129"   # passive data ports, 10 per node
+      - "8404:8404"                 # HAProxy stats page + /metrics
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8404/metrics"]
+      interval: 5s
+      retries: 20
+    depends_on: [ftp-node-1, ftp-node-2, ftp-node-3]
+    restart: unless-stopped
+
+  # Three identical FTP nodes on ONE shared storage volume. The platform
+  # controller replaces any node that stops answering (restart is "no" on
+  # purpose so self-healing is done by the controller, not by Docker).
+  ftp-node-1:
+    <<: *ftp-node
+    environment: { <<: *ftp-env, FTP_NODE_NAME: ftp-node-1, FTP_PASV_MIN_PORT: 21100, FTP_PASV_MAX_PORT: 21109 }
+    labels: { edi.platform.role: ftp-node, edi.platform.slot: "1", edi.platform.generation: "1" }
+  ftp-node-2:
+    <<: *ftp-node
+    environment: { <<: *ftp-env, FTP_NODE_NAME: ftp-node-2, FTP_PASV_MIN_PORT: 21110, FTP_PASV_MAX_PORT: 21119 }
+    labels: { edi.platform.role: ftp-node, edi.platform.slot: "2", edi.platform.generation: "1" }
+  ftp-node-3:
+    <<: *ftp-node
+    environment: { <<: *ftp-env, FTP_NODE_NAME: ftp-node-3, FTP_PASV_MIN_PORT: 21120, FTP_PASV_MAX_PORT: 21129 }
+    labels: { edi.platform.role: ftp-node, edi.platform.slot: "3", edi.platform.generation: "1" }
+
+  # Self-healing + platform metrics (needs the Docker socket to replace nodes).
+  platform-controller:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      target: platform
+    environment:
+      AMQP_URL: amqp://edi:edi@rabbitmq:5672
+      PROMETHEUS_URL: http://prometheus:9090
+      STORAGE_PATH: /srv/ftp
+      FTP_SLOTS: "1,2,3"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ftp-storage:/srv/ftp:ro
+    ports: ["9100:9100"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:9100/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 5s
+      retries: 30
+      start_period: 10s
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+      ftp-node-1: { condition: service_started }
+      ftp-node-2: { condition: service_started }
+      ftp-node-3: { condition: service_started }
+    restart: unless-stopped
+
+  # Prometheus scrapes the load balancer, the controller and the apps, and
+  # evaluates the FTP cluster alert rules.   http://localhost:9090
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=2d
+      - --web.enable-lifecycle
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports: ["9090:9090"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9090/-/ready"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
 
   # ------------------------------------------------------------ web app 1
   distributor-api:
@@ -61,6 +142,8 @@ services:
       FTP_PASSWORD: ${FTP_DISTRIBUTOR_PASSWORD:-distributor123}
       FTP_POLL_INTERVAL_MS: ${FTP_POLL_INTERVAL_MS:-5000}
       ORDER_API_URL: http://order-api:4100
+      PROMETHEUS_URL: http://prometheus:9090
+      PLATFORM_CONTROLLER_URL: http://platform-controller:9100
       ORDER_API_KEY: ${INTEGRATION_API_KEY:-integration-key-change-me}
       DELIVERY_FAILURE_RATE: ${DELIVERY_FAILURE_RATE:-0.05}
       JWT_SECRET: ${DISTRIBUTOR_JWT_SECRET:-dev-distributor-secret-change-me}
@@ -143,18 +226,11 @@ services:
       FTP_PRODUCER_PASSWORD: ${FTP_PRODUCER_PASSWORD:-producer123}
       ORDER_API_URL: http://order-api:4100
     volumes: [simdata:/data]
-    depends_on: [ftp]
-
-  # docker compose --profile observability up -d   → http://localhost:9090
-  prometheus:
-    profiles: [observability]
-    image: prom/prometheus:v2.53.0
-    volumes: ["./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
-    ports: ["9090:9090"]
-    depends_on: [distributor-api]
+    # no depends_on: it runs against an already running stack (and must not try to
+    # restart an FTP node that a chaos test froze on purpose)
 
 volumes:
   pgdata:
   rabbitdata:
-  ftpdata:
+  ftp-storage:   # shared FTP storage (mailboxes) mounted by every FTP node
   simdata:

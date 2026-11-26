@@ -30,7 +30,7 @@ cleanup() {
   local code=$?
   if [[ $code -ne 0 || $FAILED -ne 0 ]]; then
     log "Failure — service logs (last 80 lines each)"
-    $DC logs --no-color --tail 80 distributor-api order-api ftp || true
+    $DC logs --no-color --tail 80 distributor-api order-api platform-controller ftp || true
   fi
   if [[ -z "${KEEP_STACK:-}" ]]; then
     log "Tearing down $COMPOSE_PROJECT_NAME"
@@ -59,12 +59,12 @@ wait_until() {
   pass "$desc ($((SECONDS - start))s)"
 }
 
-sim() { $DC run --rm -T simulator "$@" >/dev/null; }
+sim() { $DC run --rm -T --no-deps simulator "$@" >/dev/null; }
 
 log "Starting stack ($COMPOSE_PROJECT_NAME)"
 $DC down -v --remove-orphans >/dev/null 2>&1 || true
 $DC build
-$DC up -d --wait --wait-timeout 600 postgres rabbitmq ftp distributor-api order-api distributor-web order-web
+$DC up -d --wait --wait-timeout 600 postgres rabbitmq ftp ftp-node-1 ftp-node-2 ftp-node-3 platform-controller prometheus distributor-api order-api distributor-web order-web
 pass "all services healthy"
 
 TOKEN=$(curl -fsS -X POST "$DIST/auth/login" -H 'content-type: application/json' \
@@ -145,6 +145,30 @@ expect "distributor-web /api/health" "$(curl -fsS http://localhost:3000/api/heal
 expect "order-web /api/health"       "$(curl -fsS http://localhost:3001/api/health | jq -r .status)" ok
 expect "distributor-web SPA route"   "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/edi/interchanges)" 200
 expect "order-web SPA route"         "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3001/shop)" 200
+
+log "9. High availability: freeze an FTP node, keep delivering, self-heal"
+CTRL=http://localhost:9100
+ctrl() { curl -fsS "$CTRL/$1"; }
+expect "FTP nodes ready before chaos" "$(ctrl api/state | jq .readyNodes)" 3
+expect "load balancer servers UP" "$(curl -fsS http://localhost:8404/metrics | grep -c 'haproxy_server_status{proxy="ftp_control",server="node[123]",state="UP"} 1')" 3
+BEFORE_IC=$(kpi .edi.interchanges)
+curl -fsS -X POST "$CTRL/api/chaos" -H 'content-type: application/json' -d '{"slot":2,"mode":"pause"}' >/dev/null && pass "froze ftp-node-2 (docker pause)"
+sim producers -n 3 -b 0 -t 846 -p ZEPHYRWOOD -i 0
+pass "producer uploaded 3 files through the load balancer while ftp-node-2 is frozen"
+node2_replaced() { [[ "$(ctrl api/state | jq -r '.nodes[] | select(.slot==2) | "\(.status)/\(.generation)"')" == READY/2 ]]; }
+wait_until "ftp-node-2 replaced by a new container (generation 2) and READY" 90 node2_replaced
+expect "FTP nodes ready after self-heal" "$(ctrl api/state | jq .readyNodes)" 3
+wait_until "files sent during the outage were processed" 90 interchanges_at_least $((BEFORE_IC + 3))
+expect "controller recorded the recovery" "$(ctrl api/state | jq '[.events[] | select(.type=="NODE_RECOVERED" and .slot==2)] | length')" 1
+platform_notified() { [[ "$(dist 'notifications?category=platform&pageSize=50' | jq '[.items[].type] | (index("platform.node.down") != null) and (index("platform.node.ready") != null)')" == true ]]; }
+wait_until "platform notifications (node down + ready) delivered via RabbitMQ" 30 platform_notified
+expect "Prometheus scrapes the controller" "$(curl -fsS -G http://localhost:9090/api/v1/query --data-urlencode 'query=up{job="platform-controller"}' | jq -r '.data.result[0].value[1]')" 1
+prom_nodes_up() { [[ "$(curl -fsS -G http://localhost:9090/api/v1/query --data-urlencode 'query=sum(ftp_node_up)' | jq -r '.data.result[0].value[1]')" == 3 ]]; }
+wait_until "Prometheus sees all 3 FTP nodes up again" 30 prom_nodes_up
+STATE=$(dist platform/overview)
+expect "platform overview: controller reachable" "$(jq .controller.reachable <<<"$STATE")" true
+expect "platform overview: LB servers" "$(jq '.loadBalancer.servers | length' <<<"$STATE")" 3
+expect_ge "platform overview: files on shared volume" "$(jq '.controller.storage.totals.files' <<<"$STATE")" 30
 
 if [[ $FAILED -ne 0 ]]; then log "E2E FAILED"; exit 1; fi
 log "E2E PASSED"

@@ -1,4 +1,4 @@
-import { QUEUES, type EdiEvent, type OrderEvent } from '@edi/shared';
+import { QUEUES, type EdiEvent, type OrderEvent, type PlatformEvent } from '@edi/shared';
 import { bus } from './bus.js';
 import { prisma } from './db.js';
 import { log } from './log.js';
@@ -19,7 +19,15 @@ export function registerConsumers() {
     });
   });
 
-  // 2) Order app events: maintain a replica of customers / orders / bills and adjust stock.
+  // 2) Platform (FTP cluster) events from the platform controller: node down / replaced / ready, alerts, chaos
+  bus.consume(QUEUES.distributorPlatform, async (body) => {
+    const e = body as PlatformEvent;
+    await prisma.notification.create({
+      data: { type: e.routingKey, severity: e.severity, title: e.title, message: e.message, source: 'platform-controller', payload: e as object },
+    });
+  });
+
+  // 3) Order app events: maintain a replica of customers / orders / bills and adjust stock.
   bus.consume(QUEUES.distributorOrderEvents, async (body) => {
     const e = body as OrderEvent;
     const seen = await prisma.orderEventLog.findUnique({ where: { eventId: e.eventId } });

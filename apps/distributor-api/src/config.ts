@@ -28,6 +28,10 @@ export const config = {
     failureRate: Number(env('DELIVERY_FAILURE_RATE', '0.05')),
     pollMs: num('DELIVERY_POLL_MS', 2000),
   },
+  platform: {
+    prometheusUrl: env('PROMETHEUS_URL', 'http://localhost:9090'),
+    controllerUrl: env('PLATFORM_CONTROLLER_URL', 'http://localhost:9100'),
+  },
   markup: Number(env('PRICE_MARKUP', '0.35')),
   lowStockThreshold: num('LOW_STOCK_THRESHOLD', 25),
   admin: {

@@ -45,6 +45,24 @@ function nextIcn(state: State, p: Producer): number {
   return cur.lastIcn;
 }
 
+/**
+ * Upload with retries, like a real EDI sender: if the FTP node holding our
+ * session dies (the load balancer then closes it), reconnect through the load
+ * balancer and try again — the next connection lands on a healthy node.
+ */
+async function uploadWithRetry(opts: ProducerOptions, producer: Producer, fileName: string, content: string): Promise<number> {
+  const attempts = 4;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await uploadAs(opts, producer, fileName, content);
+      return attempt;
+    } catch (e) {
+      if (attempt >= attempts) throw e;
+      await new Promise((r) => setTimeout(r, 1000 * attempt));
+    }
+  }
+}
+
 async function uploadAs(opts: ProducerOptions, producer: Producer, fileName: string, content: string) {
   const client = new Client(15_000);
   try {
@@ -102,7 +120,8 @@ export async function runProducers(opts: ProducerOptions) {
     let result = c.green('uploaded');
     if (!opts.dryRun) {
       try {
-        await uploadAs(opts, job.producer, fileName, x12);
+        const attempt = await uploadWithRetry(opts, job.producer, fileName, x12);
+        if (attempt > 1) result = c.yellow(`uploaded (attempt ${attempt})`);
         ok++;
       } catch (e) {
         failed++;
@@ -124,6 +143,7 @@ export async function runProducers(opts: ProducerOptions) {
   console.log(`\n${c.bold('Summary')}: ${jobs.length} files (${jobs.length - bad} valid, ${bad} with injected errors) — ${ok} delivered, ${failed} failed`);
   console.log(c.dim(`Copies saved in ${join(opts.outDir, 'sent')}; manifest in ${join(opts.outDir, 'manifest.jsonl')}`));
   if (!opts.dryRun) console.log(c.dim('Watch them arrive: Distributor UI → EDI → Interchanges (http://localhost:3000)'));
+  if (failed) process.exitCode = 1;
 }
 
 /** Download TA1 / 997 acknowledgments the distributor sent back to producers. */
