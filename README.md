@@ -10,12 +10,12 @@ A self-contained, Docker-based playground for learning **EDI (ANSI X12 004010)**
 
 ## Demo videos
 
-Three short recordings of the real stack running locally. The previews play inline; click one to open the full-quality MP4.
+Three short recordings of the real stack running locally. The previews play inline; click one (or a ▶ link) to play the full-quality MP4 in your browser. The MP4 files are also in [docs/demo](docs/demo) if you prefer to download them.
 
 | 1 · Infrastructure | 2 · Distributor — EDI Control Center | 3 · Customer — Order app |
 |:---:|:---:|:---:|
-| [![Infrastructure demo](docs/demo/infra-preview.gif)](docs/demo/infra.mp4) | [![Distributor demo](docs/demo/distributor-preview.gif)](docs/demo/distributor.mp4) | [![Customer demo](docs/demo/customer-preview.gif)](docs/demo/customer.mp4) |
-| Containers, the FTP mailboxes, `sim:producers` sending good and bad X12, the pipeline log, TA1/997 acks over FTP, and RabbitMQ exchanges, bindings and messages.<br/>[▶ Full video (1:53)](docs/demo/infra.mp4) | Dashboard, envelope trace (ISA → GS → ST), annotated segments, rejections with their X12 codes, X12 ⇄ JSON, FTP drawer, validation, notifications, inventory traceability, KPIs and the X12 Inspector.<br/>[▶ Full video (2:48)](docs/demo/distributor.mp4) | Shopping the EDI-loaded inventory, cart and checkout (Net-30 bill), cancelling an order, paying a bill, and the resulting RabbitMQ events arriving at the distributor.<br/>[▶ Full video (1:48)](docs/demo/customer.mp4) |
+| [![Infrastructure demo](docs/demo/infra-preview.gif)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/infra.mp4) | [![Distributor demo](docs/demo/distributor-preview.gif)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/distributor.mp4) | [![Customer demo](docs/demo/customer-preview.gif)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/customer.mp4) |
+| Containers, the FTP mailboxes, `sim:producers` sending good and bad X12, the pipeline log, TA1/997 acks over FTP, and RabbitMQ exchanges, bindings and messages.<br/>[▶ Full video (1:53)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/infra.mp4) | Dashboard, envelope trace (ISA → GS → ST), annotated segments, rejections with their X12 codes, X12 ⇄ JSON, FTP drawer, validation, notifications, inventory traceability, KPIs and the X12 Inspector.<br/>[▶ Full video (2:48)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/distributor.mp4) | Shopping the EDI-loaded inventory, cart and checkout (Net-30 bill), cancelling an order, paying a bill, and the resulting RabbitMQ events arriving at the distributor.<br/>[▶ Full video (1:48)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/customer.mp4) |
 
 <sub>Recorded with Playwright against the running apps: see [scripts/demo](scripts/demo) to re-record them.</sub>
 
