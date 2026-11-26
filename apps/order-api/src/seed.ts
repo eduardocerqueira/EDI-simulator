@@ -5,14 +5,14 @@ import { enqueue } from './outbox.js';
 
 /** Demo restaurant / grocery customers (fictional). */
 export const SEED_CUSTOMERS = [
-  { email: 'alice@freshbistro.local', name: 'Alice Moreau', company: 'Fresh Bistro' },
-  { email: 'ben@greengrocer.local', name: 'Ben Okafor', company: 'The Green Grocer' },
-  { email: 'carla@cornercafe.local', name: 'Carla Duarte', company: 'Corner Cafe' },
-  { email: 'dev@sprouts-kitchen.local', name: 'Dev Patel', company: "Sprout's Kitchen" },
-  { email: 'emma@harborinn.local', name: 'Emma Lindqvist', company: 'Harbor Inn' },
-  { email: 'felix@urbanbakery.local', name: 'Felix Wagner', company: 'Urban Bakery' },
-  { email: 'grace@schoolmeals.local', name: 'Grace Kim', company: 'Valley School Meals' },
-  { email: 'hugo@farmtable.local', name: 'Hugo Rossi', company: 'Farm & Table Trattoria' },
+  { email: 'nova@copperleaf.example', name: 'Nova Quill', company: 'Copperleaf Kitchen' },
+  { email: 'orin@saltglass.example', name: 'Orin Vale', company: 'Saltglass Grocer' },
+  { email: 'pia@tinbell.example', name: 'Pia Marlow', company: 'Tinbell Cafe' },
+  { email: 'quentin@emberthyme.example', name: 'Quentin Rook', company: "Ember & Thyme" },
+  { email: 'rhea@gullwing.example', name: 'Rhea Solis', company: 'Gullwing Inn' },
+  { email: 'silas@crumbworks.example', name: 'Silas Wren', company: 'Crumbworks Bakery' },
+  { email: 'tamsin@brightside.example', name: 'Tamsin Holt', company: 'Brightside School Meals' },
+  { email: 'ulric@silverspoon.example', name: 'Ulric Dane', company: 'Silverspoon Trattoria' },
 ];
 
 export async function seed() {

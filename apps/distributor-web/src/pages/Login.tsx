@@ -55,11 +55,11 @@ export function LoginPage() {
             <li className="flex items-center gap-3"><Boxes className="size-5" /> Mapped to JSON, ingested and pushed to the order app</li>
           </ul>
           <pre className="rounded-lg bg-black/20 p-4 font-mono text-xs leading-relaxed text-white/90">
-{`ISA*00*          *00*          *ZZ*GREENVALLEY    *ZZ*HARVESTHUB     *…~
-GS*IB*GREENVALLEY*HARVESTHUB*20261125*1430*1001*X*004010~
+{`ISA*00*          *00*          *ZZ*ZEPHYRWOOD     *ZZ*HARVESTHUB     *…~
+GS*IB*ZEPHYRWOOD*HARVESTHUB*20261125*1430*1001*X*004010~
 ST*846*0001~
 BIA*00*DD*INV2611254821*20261125*1430~
-LIN**UP*081007000105*VN*GVF-001~
+LIN**UP*081007000105*VN*ZWG-001~
 QTY*33*240*CA~`}
           </pre>
         </div>

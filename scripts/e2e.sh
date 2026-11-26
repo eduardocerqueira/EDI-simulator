@@ -71,7 +71,7 @@ TOKEN=$(curl -fsS -X POST "$DIST/auth/login" -H 'content-type: application/json'
   -d '{"email":"admin@harvesthub.local","password":"admin123"}' | jq -r .token)
 [[ -n "$TOKEN" && "$TOKEN" != null ]] && pass "distributor admin login" || { fail "distributor admin login"; exit 1; }
 CTOKEN=$(curl -fsS -X POST "$ORDER/auth/login" -H 'content-type: application/json' \
-  -d '{"email":"alice@freshbistro.local","password":"password123"}' | jq -r .token)
+  -d '{"email":"nova@copperleaf.example","password":"password123"}' | jq -r .token)
 [[ -n "$CTOKEN" && "$CTOKEN" != null ]] && pass "order app customer login" || { fail "order app customer login"; exit 1; }
 
 dist()  { curl -fsS "$DIST/$1" -H "authorization: Bearer $TOKEN"; }
@@ -92,7 +92,7 @@ wait_until "25 interchanges processed" 120 interchanges_at_least 25
 
 log "3. One file per bad-data layer (envelope, group, transaction, segment, element, business)"
 SCENARIOS=(ISA_IEA_CONTROL_MISMATCH UNKNOWN_SENDER GE_TRANSACTION_COUNT SE_SEGMENT_COUNT MISSING_CTT INVALID_QUALIFIER UNKNOWN_PRODUCT)
-for s in "${SCENARIOS[@]}"; do sim producers -n 1 -s "$s" -p GREENVALLEY -i 0; done
+for s in "${SCENARIOS[@]}"; do sim producers -n 1 -s "$s" -p ZEPHYRWOOD -i 0; done
 wait_until "32 interchanges processed" 120 interchanges_at_least 32
 wait_until "all REST deliveries settled" 120 deliveries_settled 25
 

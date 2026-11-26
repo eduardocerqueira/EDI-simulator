@@ -9,9 +9,9 @@ import { useAuth } from '@/lib/auth';
 import { Logo } from '@/components/logo';
 
 const DEMO = [
-  { email: 'alice@freshbistro.local', company: 'Fresh Bistro' },
-  { email: 'ben@greengrocer.local', company: 'The Green Grocer' },
-  { email: 'hugo@farmtable.local', company: 'Farm & Table Trattoria' },
+  { email: 'nova@copperleaf.example', company: 'Copperleaf Kitchen' },
+  { email: 'orin@saltglass.example', company: 'Saltglass Grocer' },
+  { email: 'ulric@silverspoon.example', company: 'Silverspoon Trattoria' },
 ];
 
 function AuthShell({ children }: { children: ReactNode }) {
@@ -45,7 +45,7 @@ export function LoginPage() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState('alice@freshbistro.local');
+  const [email, setEmail] = useState('nova@copperleaf.example');
   const [password, setPassword] = useState('password123');
   const [busy, setBusy] = useState(false);
   if (user) return <Navigate to="/" replace />;

@@ -1,6 +1,9 @@
 /**
  * Master data for the simulation: the distributor, 10 farm producers
  * (trading partners) and 100 farm products (10 per producer).
+ *
+ * All companies, people, addresses, IDs and contact details in this project
+ * are FICTIONAL. Any resemblance to real businesses is coincidental.
  */
 
 export const DISTRIBUTOR = {
@@ -9,10 +12,10 @@ export const DISTRIBUTOR = {
   isaId: 'HARVESTHUB',
   gsCode: 'HARVESTHUB',
   n1Code: 'HHD001',
-  address: '500 Market Street',
-  city: 'Sacramento',
+  address: '1 Example Plaza',
+  city: 'Lumen City',
   state: 'CA',
-  postalCode: '95814',
+  postalCode: '00010',
 } as const;
 
 export interface Producer {
@@ -58,16 +61,16 @@ const p = (
 });
 
 export const PRODUCERS: Producer[] = [
-  p(1, 'Green Valley Farms', 'GREENVALLEY', 'GVF', 'Vegetables', '1200 Valley Rd', 'Salinas', 'CA', '93901'),
-  p(2, 'Sunrise Orchards', 'SUNRISEORCH', 'SRO', 'Tree fruit', '88 Orchard Ln', 'Yakima', 'WA', '98901'),
-  p(3, 'Meadow Creek Dairy', 'MEADOWCREEK', 'MCD', 'Dairy', '450 Creek Rd', 'Tillamook', 'OR', '97141'),
-  p(4, 'Happy Hen Poultry', 'HAPPYHEN', 'HHP', 'Eggs & poultry', '17 Coop Way', 'Petaluma', 'CA', '94952'),
-  p(5, 'Golden Fields Grain', 'GOLDENFIELDS', 'GFG', 'Grains & flour', '9 Wheat St', 'Salina', 'KS', '67401'),
-  p(6, 'Blue Ridge Apiary', 'BLUERIDGE', 'BRA', 'Honey & maple', '300 Hive Hill', 'Asheville', 'NC', '28801'),
-  p(7, 'River Bend Ranch', 'RIVERBEND', 'RBR', 'Pasture-raised meat', '2 Ranch Rd', 'Bozeman', 'MT', '59715'),
-  p(8, 'Cedar Hill Herbs', 'CEDARHILL', 'CHH', 'Herbs & greens', '61 Cedar Hill', 'Burlington', 'VT', '05401'),
-  p(9, 'Prairie Wind Organics', 'PRAIRIEWIND', 'PWO', 'Legumes & roots', '700 Prairie Ave', 'Fargo', 'ND', '58102'),
-  p(10, 'Coastal Berry Co', 'COASTALBERRY', 'CBC', 'Berries', '44 Shoreline Dr', 'Watsonville', 'CA', '95076'),
+  p(1, 'Zephyrwood Greens', 'ZEPHYRWOOD', 'ZWG', 'Vegetables', '100 Example Road', 'Fernhollow', 'CA', '00011'),
+  p(2, 'Quillberry Orchards', 'QUILLBERRY', 'QBO', 'Tree fruit', '200 Example Lane', 'Brightwater', 'WA', '00012'),
+  p(3, 'Mossvale Creamery', 'MOSSVALE', 'MVC', 'Dairy', '300 Example Way', 'Cloudmere', 'OR', '00013'),
+  p(4, 'Pebblewing Poultry', 'PEBBLEWING', 'PWP', 'Eggs & poultry', '400 Example Court', 'Hollowbrook', 'CA', '00014'),
+  p(5, 'Thistlewick Mills', 'THISTLEWICK', 'TWM', 'Grains & flour', '500 Example Street', 'Amberplain', 'KS', '00015'),
+  p(6, 'Glimmerhive Apiary', 'GLIMMERHIVE', 'GHA', 'Honey & maple', '600 Example Hill', 'Lumen Falls', 'NC', '00016'),
+  p(7, 'Ironfern Ranch', 'IRONFERN', 'IFR', 'Pasture-raised meat', '700 Example Trail', 'Copperridge', 'MT', '00017'),
+  p(8, 'Wispmeadow Herbs', 'WISPMEADOW', 'WMH', 'Herbs & greens', '800 Example Drive', 'Mistvale', 'VT', '00018'),
+  p(9, 'Lanternfield Organics', 'LANTERNFIELD', 'LFO', 'Legumes & roots', '900 Example Avenue', 'Starfall', 'ND', '00019'),
+  p(10, 'Driftcove Berries', 'DRIFTCOVE', 'DCB', 'Berries', '1000 Example Shore', 'Seaglass Bay', 'CA', '00020'),
 ];
 
 export interface ProductSeed {
@@ -93,7 +96,7 @@ export function upcCheckDigit(eleven: string): string {
 type Row = [name: string, category: string, uom: string, pack: number, size: number, price: number];
 
 const ITEMS: Record<string, Row[]> = {
-  GREENVALLEY: [
+  ZEPHYRWOOD: [
     ['Organic Romaine Lettuce', 'Vegetables', 'CA', 24, 1, 28.5],
     ['Rainbow Carrots', 'Vegetables', 'LB', 1, 25, 1.35],
     ['Broccoli Crowns', 'Vegetables', 'LB', 1, 20, 1.9],
@@ -105,7 +108,7 @@ const ITEMS: Record<string, Row[]> = {
     ['Red Onions', 'Vegetables', 'LB', 1, 50, 0.7],
     ['Baby Spinach', 'Vegetables', 'LB', 1, 4, 4.8],
   ],
-  SUNRISEORCH: [
+  QUILLBERRY: [
     ['Honeycrisp Apples', 'Fruit', 'LB', 1, 40, 1.85],
     ['Gala Apples', 'Fruit', 'LB', 1, 40, 1.25],
     ['Bartlett Pears', 'Fruit', 'LB', 1, 44, 1.4],
@@ -117,7 +120,7 @@ const ITEMS: Record<string, Row[]> = {
     ['Fresh Pressed Apple Cider', 'Beverages', 'GA', 4, 1, 6.5],
     ['Dried Apple Rings', 'Pantry', 'LB', 1, 5, 7.8],
   ],
-  MEADOWCREEK: [
+  MOSSVALE: [
     ['Whole Milk', 'Dairy', 'GA', 4, 1, 4.2],
     ['2% Reduced Fat Milk', 'Dairy', 'GA', 4, 1, 3.95],
     ['Heavy Cream', 'Dairy', 'EA', 12, 1, 3.6],
@@ -129,7 +132,7 @@ const ITEMS: Record<string, Row[]> = {
     ['Gouda Wheel', 'Dairy', 'LB', 1, 8, 9.2],
     ['Buttermilk', 'Dairy', 'EA', 12, 1, 2.1],
   ],
-  HAPPYHEN: [
+  PEBBLEWING: [
     ['Free Range Large Brown Eggs', 'Eggs', 'DZ', 15, 1, 3.4],
     ['Pasture Raised Jumbo Eggs', 'Eggs', 'DZ', 15, 1, 4.25],
     ['Duck Eggs', 'Eggs', 'DZ', 6, 1, 7.5],
@@ -141,7 +144,7 @@ const ITEMS: Record<string, Row[]> = {
     ['Turkey Breast', 'Poultry', 'LB', 1, 20, 7.25],
     ['Chicken Bone Broth', 'Pantry', 'EA', 12, 1, 6.8],
   ],
-  GOLDENFIELDS: [
+  THISTLEWICK: [
     ['Hard Red Wheat Berries', 'Grains', 'LB', 1, 50, 0.85],
     ['Stone Ground Whole Wheat Flour', 'Grains', 'LB', 1, 25, 1.2],
     ['Unbleached All Purpose Flour', 'Grains', 'LB', 1, 50, 0.75],
@@ -153,7 +156,7 @@ const ITEMS: Record<string, Row[]> = {
     ['Spelt Flour', 'Grains', 'LB', 1, 25, 1.9],
     ['Sunflower Seeds', 'Pantry', 'LB', 1, 25, 2.6],
   ],
-  BLUERIDGE: [
+  GLIMMERHIVE: [
     ['Wildflower Honey', 'Honey & Syrup', 'JR', 12, 1, 8.5],
     ['Clover Honey', 'Honey & Syrup', 'JR', 12, 1, 7.25],
     ['Raw Honeycomb', 'Honey & Syrup', 'EA', 6, 1, 14.0],
@@ -165,7 +168,7 @@ const ITEMS: Record<string, Row[]> = {
     ['Honey Mustard', 'Pantry', 'JR', 12, 1, 4.9],
     ['Creamed Honey', 'Honey & Syrup', 'JR', 12, 1, 8.9],
   ],
-  RIVERBEND: [
+  IRONFERN: [
     ['Grass Fed Ground Beef', 'Meat', 'LB', 1, 20, 6.75],
     ['Ribeye Steak', 'Meat', 'LB', 1, 10, 18.5],
     ['New York Strip Steak', 'Meat', 'LB', 1, 10, 16.25],
@@ -177,7 +180,7 @@ const ITEMS: Record<string, Row[]> = {
     ['Lamb Leg', 'Meat', 'LB', 1, 10, 12.9],
     ['Beef Bone Broth', 'Pantry', 'EA', 12, 1, 7.4],
   ],
-  CEDARHILL: [
+  WISPMEADOW: [
     ['Sweet Basil', 'Herbs', 'BG', 12, 1, 2.9],
     ['Italian Parsley', 'Herbs', 'BG', 24, 1, 1.4],
     ['Cilantro', 'Herbs', 'BG', 24, 1, 1.3],
@@ -189,7 +192,7 @@ const ITEMS: Record<string, Row[]> = {
     ['Arugula', 'Vegetables', 'LB', 1, 3, 5.6],
     ['Microgreens Mix', 'Vegetables', 'PK', 12, 1, 3.8],
   ],
-  PRAIRIEWIND: [
+  LANTERNFIELD: [
     ['Black Beans', 'Legumes', 'LB', 1, 25, 1.25],
     ['Pinto Beans', 'Legumes', 'LB', 1, 25, 1.1],
     ['Green Lentils', 'Legumes', 'LB', 1, 25, 1.35],
@@ -201,7 +204,7 @@ const ITEMS: Record<string, Row[]> = {
     ['Parsnips', 'Vegetables', 'LB', 1, 20, 1.6],
     ['Garlic Bulbs', 'Vegetables', 'LB', 1, 10, 4.2],
   ],
-  COASTALBERRY: [
+  DRIFTCOVE: [
     ['Strawberries', 'Berries', 'LB', 1, 8, 3.2],
     ['Blueberries', 'Berries', 'LB', 1, 6, 5.4],
     ['Raspberries', 'Berries', 'LB', 1, 3, 7.1],
