@@ -14,8 +14,8 @@ Three short recordings of the real stack running locally. The previews play inli
 
 | 1 · Infrastructure | 2 · Distributor — EDI Control Center | 3 · Customer — Order app |
 |:---:|:---:|:---:|
-| [![Infrastructure demo](docs/demo/infra-preview.gif)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/infra.mp4)<br/>**[▶ Play full video (2:16)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/infra.mp4)** | [![Distributor demo](docs/demo/distributor-preview.gif)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/distributor.mp4)<br/>**[▶ Play full video (3:42)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/distributor.mp4)** | [![Customer demo](docs/demo/customer-preview.gif)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/customer.mp4)<br/>**[▶ Play full video (1:47)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/customer.mp4)** |
-| The stack and the **HA FTP cluster** (load balancer + 3 nodes on shared storage), producer mailboxes, `sim:producers` sending good and bad X12 spread across the nodes, the pipeline log, a live **`chaos:ftp`** run (node frozen → replaced → serving again), HAProxy stats, Prometheus graph and alerts, and RabbitMQ exchanges and queues. | Dashboard, envelope trace (ISA → GS → ST), annotated segments, rejections with their X12 codes, X12 ⇄ JSON, FTP drawer, validation, notifications, inventory traceability, KPIs, **Platform → FTP Cluster** (simulated node failure healing on screen) and **Storage**, and the X12 Inspector. | Shopping the EDI-loaded inventory, cart and checkout (Net-30 bill), cancelling an order, paying a bill, and the resulting RabbitMQ events arriving at the distributor. |
+| [![Infrastructure demo](docs/demo/infra-preview.gif)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/infra.mp4)<br/>**[▶ Play full video (2:55)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/infra.mp4)** | [![Distributor demo](docs/demo/distributor-preview.gif)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/distributor.mp4)<br/>**[▶ Play full video (5:21)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/distributor.mp4)** | [![Customer demo](docs/demo/customer-preview.gif)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/customer.mp4)<br/>**[▶ Play full video (1:48)](https://cdn.jsdelivr.net/gh/eduardocerqueira/EDI-simulator@main/docs/demo/customer.mp4)** |
+| The stack and the **HA FTP cluster** (load balancer + 3 nodes on shared storage), producer mailboxes, `sim:producers` sending good and bad X12 spread across the nodes, the pipeline log, a **longevity run** (producers ramping up and down), a live **`chaos:ftp`** run (node frozen → replaced → serving again), HAProxy stats, Prometheus graph and alerts, and RabbitMQ exchanges and queues. | Dashboard, envelope trace (ISA → GS → ST), rejections with their X12 codes, X12 ⇄ JSON, **Reports → EDI errors** with a producer drill-down, **reporting failures to a producer** by e-mail (simulated Resend: delivery webhooks, the producer's reply, a quarantined unknown sender), the **Action Items** backlog, producers with logos (cards/table), inventory traceability, orders and bills filters, **Platform** (node failure healing on screen, metrics, recovery timeline, alerts, storage), and the X12 Inspector. | Shopping the EDI-loaded inventory, cart and checkout (Net-30 bill), cancelling an order, paying a bill, and the resulting RabbitMQ events arriving at the distributor. |
 
 <sub>Recorded with Playwright against the running apps: see [scripts/demo](scripts/demo) to re-record them.</sub>
 
@@ -88,7 +88,10 @@ The script injects the failure with the Docker CLI, then follows the recovery li
 timeline : first failed probe +4s → declared down +10s → new container +10s → serving +13s
 ```
 
-In the EDI Control Center, **Platform → FTP Cluster** shows the nodes and their status, load-balancer state, traffic and sessions per node, probe latency, Prometheus alerts, the recovery timeline and platform notifications, plus a *Simulate failure* button. **Platform → Storage** shows the shared volume per producer: fresh, archived, acks and error files, bytes on the volume, and inbound/outbound traffic.
+In the EDI Control Center, the **Platform** page has two tabs, each with its own sub-tabs. A *Simulate failure* button is always available.
+
+- **FTP Cluster:** cluster KPIs, then *Nodes* (status, load-balancer state, sessions and traffic per node), *Metrics* (ready nodes, traffic, sessions, probe latency), *Recovery timeline*, *Alerts* (Prometheus alerts and scrape targets) and *Notifications*.
+- **Storage:** volume usage and file totals, then *Mailboxes per producer* (fresh, archived, acks and error files, bytes, inbound/outbound traffic) and *Charts*.
 
 > The controller needs the Docker socket (`/var/run/docker.sock`) to replace containers, the role an orchestrator such as Kubernetes would play in production. The shared volume stands in for network storage such as NFS or EFS.
 
@@ -137,6 +140,7 @@ npm run sim:producers -- [options]
   -t, --types 832,846,856
   -p, --producers 3       N random producers, or a list: ZEPHYRWOOD,PEBBLEWING
   -i, --interval 300      ms between files
+  -d, --delay 10          random pause of 0..10 s between files instead of --interval
       --bootstrap         first send a valid 832 from each producer (do this on a fresh DB)
   -s, --scenario ID       force one error scenario for every file
       --dry-run           only write files to ./simulator-output/sent
@@ -146,6 +150,26 @@ npm run sim:inspect -- simulator-output/sent/<file>.x12   # explain a file segme
 ```
 
 Every file is also saved in `simulator-output/sent/`, with a `manifest.jsonl` recording which scenario was injected and the expected acknowledgment.
+
+### Longevity (soak) test
+
+Real trading partners don't send in neat batches: they come and go, and each one sends whenever it has data. Longevity mode simulates that against the FTP cluster and the ingestion pipeline:
+
+```bash
+npm run sim:producers -- --ramp 0,10 --runs 3000 --duration 10        # 3000 files in 10 minutes
+npm run sim:producers -- --ramp 2,8 --duration 60 --delay 5 -b 0.1     # one hour, 0..5 s between files, 10% bad
+npm run sim:producers -- --ramp 0,10 --runs 500 --delay 3 -v           # print every file
+```
+
+| Option | Meaning |
+|---|---|
+| `--ramp min,max` | Active producers follow a random walk between `min` and `max` (up, down, plateaus, sometimes 0). Each active producer is an independent sender with its own FTP sessions. |
+| `--runs N` | Total files to send. |
+| `--duration M` | Run time in minutes (hard stop). With `--runs`, the pause between files adapts so about `N` files go out in `M` minutes, while the total rate still rises and falls with the number of active producers. |
+| `-d, --delay S` | Cap on the random pause (0..S seconds) between two files of the same producer. Default 10, or adapted to the target when both `--runs` and `--duration` are set. |
+| `-v, --verbose` | One line per file. Otherwise you get ramp changes, a status line every 10 s, and any retries or failures. |
+
+`--bad-ratio`, `--scenario`, `--types`, `--producers` (the pool to ramp over), `--bootstrap` and `--dry-run` work as usual. `--producer-ramp` and `--number-run` are aliases for `--ramp` and `--runs`, and `SIM_RAMP`, `SIM_RUNS`, `SIM_DURATION` and `SIM_DELAY` set the same values from the environment. Ctrl+C stops gracefully and still prints the summary: files sent, delivered, failed, retried, average rate, and sparklines of active producers and files per 10 s. Run `npm run chaos:ftp` during a soak test to watch uploads ride through a node failure; they retry through the load balancer.
 
 ### Bad-data scenarios
 
@@ -179,6 +203,31 @@ Each action is written to a **transactional outbox** in the same DB transaction,
 - KPIs/observability page, an **X12 Inspector** (paste any X12 to see it explained and validated) and an **X12 reference** (segments, elements, code lists).
 
 **Order app — Harvest Market** (customers): dashboard, shop (inventory synced from EDI, showing source ICN), cart and checkout, orders (cancel), bills (pay), and reports.
+
+Both apps share one shadcn/ui package (`packages/ui`) styled after the **Lyra** preset: square corners, **Nunito Sans** for headings and text, and **Phosphor** icons (`@edi/ui/icons`). Producers and customers get generated, fictional logos.
+
+## EDI failure backlog and producer reports
+
+Nothing a producer sends should fail silently. Every inbound interchange that is rejected (TA1 R), has transaction sets rejected (997 or business rules), or fails in processing becomes an **action item** in **EDI Gateway → Action Items**:
+
+- **Backlog:** priority (envelope rejections and system errors are high), layer (envelope / syntax / business / system), status (`Open → In progress → Reported → Producer replied → Resolved`, or `Dismissed`), assignee, notes and a full history. It has filters, bulk actions, and links to the interchange, transaction sets and issues with their X12 codes.
+- **Reports → EDI errors:** error rate, rejections per day by layer, errors per producer, and error codes with the TA1/997 code the producer sees. All of it can be filtered by period, producer, transaction type, layer and code. Click a producer to drill down (codes, recent failures, open items, past reports).
+- **Report to producer:** select items, or use a producer's *Report* button, to get a **pre-filled exception report e-mail**: a summary by error, the interchanges to fix and resend, and a CSV attachment with one row per issue. Review it, edit it, and send it.
+
+### Simulated Resend integration
+
+This version sends and receives no real e-mail. Instead `apps/distributor-api/src/email/resend.ts` stands in for [Resend](https://resend.com) with the same contract, so the integration code is the real thing:
+
+| Real Resend behaviour | How it is simulated |
+|---|---|
+| `resend.emails.send(payload, { idempotencyKey })` returns `{ data, error }` | Same signature. The key is `producer-report/RPT-…`; the same key with a different payload returns 409. Only the verified domain (`harvesthub.example`) may send (403 otherwise). |
+| Delivery events through webhooks | `email.sent → email.delivered → email.opened` are POSTed to `/api/webhooks/resend`, **signed the Svix way** (`svix-id`, `svix-timestamp`, `svix-signature`). The endpoint verifies the signature and the 5-minute timestamp window, stores every delivery in a webhook log, and ignores duplicates by `svix-id`. |
+| Test inboxes | Send to `bounced@resend.dev` or `complained@resend.dev` to get `email.bounced` / `email.complained`, a warning notification and a note on the items. |
+| Inbound mail (`email.received` has metadata only, the body comes from `emails.receiving.get`) | Simulated producers answer most reports a few seconds after opening them (`RESEND_SIM_REPLY_RATE`, default 0.7). You can also press *Reply as …* in the report. Replies go to `edi-replies+rpt-000123@inbound.harvesthub.example`, which threads them back to the report. |
+
+Inbound e-mail is treated as untrusted input. A reply is attached to a report, and its items move to *Producer replied*, only when it comes from that producer's **registered EDI contact** and threads to a report we sent. Anything else is **quarantined**: it is stored and shown, and a notification is raised. The reply text is never interpreted as a command. Try *From an unknown sender* in a report to see it.
+
+To go live you would replace the simulated client with `new Resend(process.env.RESEND_API_KEY)`, verify a real domain, and point a Resend webhook at `/api/webhooks/resend` with its `whsec_…` secret in `RESEND_WEBHOOK_SECRET`.
 
 ## KPIs
 
